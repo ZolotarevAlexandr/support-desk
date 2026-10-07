@@ -1,0 +1,12 @@
+.git
+.idea
+.env
+**/node_modules
+frontend/dist
+bin
+*.tar.gz
+frontend/test-results
+frontend/playwright-report
+seminar-1.pdf
+
+backend/internal/staticui/dist

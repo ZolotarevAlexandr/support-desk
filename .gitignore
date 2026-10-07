@@ -1,0 +1,11 @@
+.env
+.idea/
+.agents
+node_modules/
+frontend/dist/
+backend/internal/staticui/dist/
+frontend/test-results/
+frontend/playwright-report/
+*.tsbuildinfo
+*.tar.gz
+bin/
