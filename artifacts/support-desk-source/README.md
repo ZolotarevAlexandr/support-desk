@@ -26,6 +26,8 @@ docker compose down
 
 ## Development
 
+For the Kubernetes, see [k8s/README.md](k8s/README.md)
+
 Install Go 1.27+, Node 24+, and PostgreSQL 18 (or start only `db` through Compose). The database URL must point to a real database; there is no in-memory alternative.
 
 ```sh
@@ -143,6 +145,12 @@ For a preinstalled Chromium, set `CHROMIUM_PATH` to its executable.
 ./scripts/package.sh
 ```
 
-The resulting `artifacts/support-desk-source.tar.gz` includes complete source, lockfiles, migrations, deployment files, tests, OpenAPI, and the Russian [Отчёт.md](Отчёт.md). It excludes credentials, volumes, dependencies, compiled assets/binaries, IDE metadata, and the assignment PDF. Extract it, configure `.env`, and use the Compose command above.
+The resulting `artifacts/support-desk-source.tar.gz` includes complete source,
+lockfiles, migrations, tests, OpenAPI, Docker/Compose configuration, all Kubernetes
+manifests and `deploy.sh`, the Russian [Отчёт.md](Отчёт.md), and `screencast.mp4`.
+The report and recording must exist before packaging. The archive includes the
+public demo Secret from `k8s/secret.yaml`; local `.env` files, volumes, dependencies,
+compiled assets/binaries, IDE metadata, and the assignment materials are excluded.
+Extract it and follow [k8s/README.md](k8s/README.md) to build and deploy in Minikube.
 
-The application uses one Git repository; commit reviewed changes and tag releases when deploying. Attachments, email notifications, password recovery, SLA automation, external integrations, Kubernetes, and monitoring are deferred.
+The application uses one Git repository; commit reviewed changes and tag releases when deploying. Attachments, email notifications, password recovery, SLA automation, external integrations, and monitoring are deferred.

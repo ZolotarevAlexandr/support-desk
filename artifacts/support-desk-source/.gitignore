@@ -1,5 +1,6 @@
 .env
 .idea/
+.agents
 node_modules/
 frontend/dist/
 backend/internal/staticui/dist/

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: support-config
+  namespace: support-desk
+data:
+  POSTGRES_USER: "support"
+  POSTGRES_DB: "support"
+  PORT: "8080"
+  LOG_LEVEL: "info"
+  DB_POOL_SIZE: "20"
+  QUERY_TIMEOUT: "5s"
+  SHUTDOWN_TIMEOUT: "15s"
+  SESSION_DURATION: "24h"
+  SECURE_COOKIE: "false"
