@@ -46,18 +46,19 @@ Vite serves http://localhost:5173 and proxies `/api` to http://localhost:8080. `
 
 ## Configuration
 
-| Variable | Default | Meaning |
-|---|---|---|
-| `DATABASE_URL` | required | PostgreSQL DSN (URL-encode credentials when necessary) |
-| `PORT` | `8080` | HTTP port |
-| `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
-| `DB_POOL_SIZE` | `20` | Maximum open and idle database connections per instance |
-| `QUERY_TIMEOUT` | `5s` | Request/database context deadline |
-| `SHUTDOWN_TIMEOUT` | `15s` | Graceful shutdown/admin-process deadline |
-| `SESSION_DURATION` | `24h` | Session lifetime |
-| `SECURE_COOKIE` | `false` | Require HTTPS for session cookies |
-| `OPERATOR_INVITE_CODE` | empty | Private operator invitation; empty disables operator registration |
-| `VERSION` | `local` | Compose image tag and build release metadata |
+| Variable                 | Default  | Meaning                                                                     |
+|--------------------------|----------|-----------------------------------------------------------------------------|
+| `DATABASE_URL`           | required | PostgreSQL DSN (URL-encode credentials when necessary)                      |
+| `PORT`                   | `8080`   | HTTP port                                                                   |
+| `LOG_LEVEL`              | `info`   | `debug`, `info`, `warn`, `error`                                            |
+| `DEPLOYMENT_ENVIRONMENT` | `local`  | Environment name attached to every JSON log event; `minikube` in Kubernetes |
+| `DB_POOL_SIZE`           | `20`     | Maximum open and idle database connections per instance                     |
+| `QUERY_TIMEOUT`          | `5s`     | Request/database context deadline                                           |
+| `SHUTDOWN_TIMEOUT`       | `15s`    | Graceful shutdown/admin-process deadline                                    |
+| `SESSION_DURATION`       | `24h`    | Session lifetime                                                            |
+| `SECURE_COOKIE`          | `false`  | Require HTTPS for session cookies                                           |
+| `OPERATOR_INVITE_CODE`   | empty    | Private operator invitation; empty disables operator registration           |
+| `VERSION`                | `local`  | Compose image tag and build release metadata                                |
 
 Compose configures `DATABASE_URL` using its database variables and always listens on container port 8080. `PORT` chooses the published host port. Do not commit `.env`. Passwords use bcrypt cost 12 with a 12-character minimum and 72-byte maximum. The server stores only SHA-256 hashes of random 256-bit session tokens. Cookies are HttpOnly and SameSite=Lax. Go cross-origin protection rejects unsafe cross-origin requests including login and registration. Roles are fixed at registration. The invite code is never sent to the frontend as configuration or stored in the database.
 
@@ -108,49 +109,3 @@ Go embedding belongs to `backend/internal/staticui`. Its development build serve
 `backend/cmd/support` owns process startup, admin commands, and signal shutdown. `backend/internal/config` reads and validates environment settings. `backend/internal/httpapi` handles strict JSON DTOs, cookies, request IDs, logging, deadlines, and Gin routing. `backend/internal/service` enforces permissions and domain rules. `backend/internal/store` owns Bun queries, transactions, and PostgreSQL error translation. `backend/migrations` holds the embedded Goose SQL schema. `frontend/src` groups authentication, tickets, workflow controls, comments, categories, and shared components. TanStack Query caches API responses; logout/session expiry clears private cache. CSS Modules provide a responsive sidebar layout. Filters persist in URL query parameters.
 
 The application keeps authoritative state in PostgreSQL, so identical instances can share sessions without sticky routing. The HTTP server supports HTTP/1.1. SIGTERM marks readiness unavailable and drains active requests within the configured deadline. Logs are JSON events on stdout and exclude request bodies, passwords, cookies, and invitation codes.
-
-## Tests
-
-```sh
-(cd frontend && npm ci)
-make test
-make vet
-# Or run Go commands inside backend/ and npm commands inside frontend/.
-```
-
-PostgreSQL tests skip unless `TEST_DATABASE_URL` is supplied. **Use a disposable test database:** these tests truncate the application tables and reset identity values.
-
-```sh
-docker run -d --name support-test-db -e POSTGRES_PASSWORD=test-password \
-  -e POSTGRES_DB=support_test -p 127.0.0.1:55432:5432 postgres:18.0-alpine3.22
-(cd backend && TEST_DATABASE_URL='postgres://postgres:test-password@localhost:55432/support_test?sslmode=disable' go test -race ./...)
-docker rm -f support-test-db
-```
-
-Wait for `pg_isready` before running tests. Tests cover registration/invites/passwords, sessions, CSRF, CRUD, user isolation, combined filter totals, assignment, closed-ticket restrictions, foreign-key conflicts, cascade deletion, migration/seed repeatability, concurrent closure versus ticket edits and comment creation/editing/deletion, competing claims/confirmations, and rollback of messages when status writes fail.
-
-Browser tests run against a running, seeded application and create uniquely named accounts. They exercise user submission, invited operator registration, queue claiming, reassignment, reply/resolution, requester rejection/confirmation, isolation, reloads, filters, logout, closed conversations, category CRUD, and pagination.
-
-```sh
-cd frontend
-npx playwright install chromium
-E2E_BASE_URL=http://localhost:8080 E2E_INVITE_CODE=your-configured-code npm run test:e2e
-```
-
-For a preinstalled Chromium, set `CHROMIUM_PATH` to its executable.
-
-## Submission
-
-```sh
-./scripts/package.sh
-```
-
-The resulting `artifacts/support-desk-source.tar.gz` includes complete source,
-lockfiles, migrations, tests, OpenAPI, Docker/Compose configuration, all Kubernetes
-manifests and `deploy.sh`, the Russian [Отчёт.md](Отчёт.md), and `screencast.mp4`.
-The report and recording must exist before packaging. The archive includes the
-public demo Secret from `k8s/secret.yaml`; local `.env` files, volumes, dependencies,
-compiled assets/binaries, IDE metadata, and the assignment materials are excluded.
-Extract it and follow [k8s/README.md](k8s/README.md) to build and deploy in Minikube.
-
-The application uses one Git repository; commit reviewed changes and tag releases when deploying. Attachments, email notifications, password recovery, SLA automation, external integrations, and monitoring are deferred.

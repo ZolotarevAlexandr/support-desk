@@ -1,0 +1,176 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-provisioning
+  namespace: logging
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+    - name: VictoriaLogs
+      uid: victorialogs
+      type: victoriametrics-logs-datasource
+      access: proxy
+      url: http://victoria-logs.logging.svc.cluster.local:9428
+      isDefault: true
+      editable: false
+      jsonData:
+        maxLines: 1000
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+    - name: support-logs
+      orgId: 1
+      type: file
+      disableDeletion: true
+      editable: false
+      options:
+        path: /var/lib/grafana/dashboards
+  support-logs.json: |-
+    {
+      "uid": "support-logs",
+      "title": "Support Desk — application logs",
+      "schemaVersion": 41,
+      "version": 2,
+      "timezone": "utc",
+      "refresh": "10s",
+      "time": {
+        "from": "now-15m",
+        "to": "now"
+      },
+      "tags": [
+        "logging-lab"
+      ],
+      "panels": [
+        {
+          "id": 1,
+          "title": "Events by severity (excluding health probes)",
+          "type": "stat",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 0,
+            "w": 12,
+            "h": 8
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "victoriametrics-logs-datasource",
+                "uid": "victorialogs"
+              },
+              "expr": "service.name:=\"support-desk\" -path:(\"/healthz\" OR \"/readyz\") | stats by (level) count() as events",
+              "queryType": "stats",
+              "editorMode": "code",
+              "legendFormat": "{{level}}"
+            }
+          ],
+          "options": {
+            "textMode": "value_and_name",
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            }
+          },
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          }
+        },
+        {
+          "id": 2,
+          "title": "p95 request duration by method (ms)",
+          "type": "stat",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 0,
+            "w": 12,
+            "h": 8
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "victoriametrics-logs-datasource",
+                "uid": "victorialogs"
+              },
+              "expr": "service.name:=\"support-desk\" _msg:=\"request\" duration_ms:* -path:(\"/healthz\" OR \"/readyz\") | stats by (method) quantile(0.95, duration_ms) as p95_ms",
+              "queryType": "stats",
+              "editorMode": "code",
+              "legendFormat": "{{method}}"
+            }
+          ],
+          "options": {
+            "textMode": "value_and_name",
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms"
+            },
+            "overrides": []
+          }
+        },
+        {
+          "id": 3,
+          "title": "Recent application logs (excluding health probes)",
+          "type": "logs",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 8,
+            "w": 24,
+            "h": 12
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "victoriametrics-logs-datasource",
+                "uid": "victorialogs"
+              },
+              "expr": "service.name:=\"support-desk\" -path:(\"/healthz\" OR \"/readyz\") | sort by (_time) desc | limit 200",
+              "queryType": "instant",
+              "editorMode": "code",
+              "maxLines": 200
+            }
+          ],
+          "options": {
+            "showTime": true,
+            "showLabels": false,
+            "wrapLogMessage": true,
+            "sortOrder": "Descending"
+          },
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          }
+        }
+      ]
+    }

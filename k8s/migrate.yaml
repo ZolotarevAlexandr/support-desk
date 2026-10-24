@@ -21,7 +21,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: migrate
-          image: support-desk:k8s-v1
+          image: support-desk:logs-v2
           imagePullPolicy: IfNotPresent
           args: ["migrate"]
           envFrom:

@@ -10,3 +10,8 @@ frontend/playwright-report
 seminar-1.pdf
 
 backend/internal/staticui/dist
+
+.agents
+artifacts
+docs/logging/screenshots
+screencast.mp4

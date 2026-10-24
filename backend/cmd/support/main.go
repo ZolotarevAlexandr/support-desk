@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"sre_tbank/internal/config"
 	"sre_tbank/internal/httpapi"
+	"sre_tbank/internal/logging"
 	"sre_tbank/internal/service"
 	"sre_tbank/internal/store"
 	"sre_tbank/migrations"
@@ -22,48 +23,63 @@ var version = "development"
 
 func main() {
 	if err := run(); err != nil {
-		slog.Error("application stopped", "error", err.Error())
+		// Database/driver errors can contain credentials or query values.
+		slog.Error("application stopped", "error.type", fmt.Sprintf("%T", err))
 		os.Exit(1)
 	}
 }
 
 func run() error {
-	c, err := config.Load()
-	if err != nil {
-		return err
-	}
-
-	level := slog.LevelInfo
-	_ = level.UnmarshalText([]byte(c.LogLevel))
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
-	slog.SetDefault(logger)
-
-	db := store.Open(c.DatabaseURL, c.PoolSize)
-	defer db.DB.Close()
-
 	command := "serve"
 	if len(os.Args) > 1 {
 		command = os.Args[1]
 	}
+	environment := os.Getenv("DEPLOYMENT_ENVIRONMENT")
+	if environment == "" {
+		environment = "local"
+	}
+	level := new(slog.LevelVar)
+	logger := logging.New(os.Stdout, level, version, environment, command)
+	slog.SetDefault(logger)
+
+	c, err := config.Load()
+	if err != nil {
+		// Config validation messages contain setting names, never their values.
+		logger.Error("invalid configuration", "error.message", err.Error())
+		return err
+	}
+
+	var configuredLevel slog.Level
+	_ = configuredLevel.UnmarshalText([]byte(c.LogLevel))
+	level.Set(configuredLevel)
+
+	db := store.Open(c.DatabaseURL, c.PoolSize)
+	defer db.DB.Close()
 
 	if command != "serve" {
+		logger.Info("command started")
 		ctx, cancel := context.WithTimeout(context.Background(), c.ShutdownTimeout)
 		defer cancel()
 		switch command {
 		case "migrate":
+			goose.SetLogger(logging.Goose{Logger: logger})
 			goose.SetBaseFS(migrations.Files)
 			if err := goose.SetDialect("postgres"); err != nil {
 				return err
 			}
 
-			return goose.UpContext(ctx, db.DB.DB, ".")
+			err = goose.UpContext(ctx, db.DB.DB, ".")
 		case "seed":
-			return db.Seed(ctx)
+			err = db.Seed(ctx)
 		case "cleanup-sessions":
-			return db.Cleanup(ctx)
+			err = db.Cleanup(ctx)
 		default:
 			return fmt.Errorf("unknown command: %s", command)
 		}
+		if err == nil {
+			logger.Info("command completed")
+		}
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), c.QueryTimeout)

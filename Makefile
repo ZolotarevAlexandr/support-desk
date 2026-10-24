@@ -18,5 +18,3 @@ vet:
 	cd backend && $(GO) vet ./...
 e2e:
 	cd frontend && $(NPM) run test:e2e
-archive:
-	./scripts/package.sh

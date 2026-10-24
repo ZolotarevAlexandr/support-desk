@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"io"
 	"io/fs"
@@ -34,6 +35,11 @@ func (a *API) Handler() http.Handler {
 	r := gin.New()
 	_ = r.SetTrustedProxies(nil)
 	r.Use(a.middleware(), a.recovery())
+
+	// Intentional failure for the logging lab; middleware records it at ERROR.
+	r.GET("/debug/error", func(c *gin.Context) {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Intentional logging lab error"})
+	})
 
 	r.GET("/healthz", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ok"}) })
 	r.GET("/readyz", func(c *gin.Context) {
@@ -290,7 +296,13 @@ func (a *API) middleware() gin.HandlerFunc {
 
 		c.Next()
 
-		a.Logger.Info("request", "request_id", requestID, "method", c.Request.Method, "path", c.Request.URL.Path, "status", c.Writer.Status(), "duration_ms", time.Since(start).Milliseconds())
+		level := slog.LevelInfo
+		if c.Writer.Status() >= 500 {
+			level = slog.LevelError
+		} else if c.Writer.Status() >= 400 {
+			level = slog.LevelWarn
+		}
+		a.Logger.Log(c.Request.Context(), level, "request", "request_id", requestID, "method", c.Request.Method, "path", c.Request.URL.Path, "status", c.Writer.Status(), "duration_ms", time.Since(start).Milliseconds())
 	}
 }
 
@@ -328,7 +340,8 @@ func (a *API) fail(c *gin.Context, err error) {
 
 	var e *service.Error
 	if !errors.As(err, &e) {
-		a.Logger.Error("request failed", "error", err.Error())
+		// Correlate diagnostics without exposing driver errors or request values.
+		a.Logger.Error("request failed", "request_id", c.Writer.Header().Get("X-Request-ID"), "error.type", fmt.Sprintf("%T", err))
 		if errors.Is(err, context.DeadlineExceeded) {
 			e = &service.Error{Status: 503, Code: "unavailable", Message: "Operation timed out; please try again"}
 		} else {

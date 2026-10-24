@@ -1,0 +1,83 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vector-config
+  namespace: logging
+data:
+  vector.yaml: |
+    data_dir: /var/lib/vector
+    sources:
+      pods:
+        type: kubernetes_logs
+        self_node_name: ${VECTOR_SELF_NODE_NAME}
+        extra_namespace_label_selector: kubernetes.io/metadata.name=support-desk
+        extra_label_selector: app in (support-app,postgres,support-migrate,support-seed)
+        read_from: beginning
+        glob_minimum_cooldown_ms: 1000
+    transforms:
+      normalize:
+        type: remap
+        inputs:
+        - pods
+        source: |
+          pod = .kubernetes.pod_name
+          namespace = .kubernetes.pod_namespace
+          container = .kubernetes.container_name
+          node = .kubernetes.pod_node_name
+          raw = string!(.message)
+          if container == "postgres" {
+            ."service.name" = "postgres"
+            .source_format = "text"
+            .level = "UNKNOWN"
+            severity, err = parse_regex(raw, r'\b(?P<severity>LOG|WARNING|ERROR|FATAL|PANIC|INFO|NOTICE|DEBUG[1-5]?):')
+            if err == null {
+              if includes(["LOG", "INFO", "NOTICE"], severity.severity) { .level = "INFO" }
+              if severity.severity == "WARNING" { .level = "WARN" }
+              if includes(["ERROR", "FATAL", "PANIC"], severity.severity) { .level = "ERROR" }
+            }
+          } else {
+            parsed, err = parse_json(raw)
+            if err == null && is_object(parsed) {
+              . = merge(., object!(parsed))
+              .source_format = "json"
+              # Read older pods during a rollout without losing their messages.
+              if exists(.time) { .timestamp = del(.time) }
+              if exists(.msg) { .message = del(.msg) }
+            } else {
+              .source_format = "text"
+              .parse_error = true
+              .level = "UNKNOWN"
+            }
+            ."service.name" = "support-desk"
+            if container == "migrate" { .command = "migrate" }
+            if container == "seed" { .command = "seed" }
+          }
+          ."k8s.namespace.name" = namespace
+          ."k8s.pod.name" = pod
+          ."k8s.container.name" = container
+          ."k8s.node.name" = node
+          del(.kubernetes)
+          del(.file)
+          del(.source_type)
+    sinks:
+      victoria_logs:
+        type: elasticsearch
+        inputs:
+        - normalize
+        endpoints:
+        - http://victoria-logs.logging.svc.cluster.local:9428/insert/elasticsearch/
+        api_version: v8
+        mode: bulk
+        compression: gzip
+        healthcheck:
+          enabled: false
+        query:
+          _time_field: timestamp
+          _msg_field: message
+          _stream_fields: service.name,k8s.namespace.name,k8s.pod.name,k8s.container.name
+        buffer:
+          type: disk
+          max_size: 268435488
+          when_full: block
+        batch:
+          timeout_secs: 1
