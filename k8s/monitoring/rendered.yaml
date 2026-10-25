@@ -1,0 +1,249 @@
+---
+# Source: victoria-metrics-single/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels: 
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: victoria-metrics-single-0.49.0
+  name: victoria-metrics
+  namespace: monitoring
+---
+# Source: victoria-metrics-single/templates/scrape-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: victoria-metrics-scrapeconfig
+  namespace: monitoring
+  labels: 
+    app.kubernetes.io/component: server
+    app.kubernetes.io/instance: vm-single
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: victoria-metrics-single
+    app.kubernetes.io/version: v1.154.0
+    helm.sh/chart: victoria-metrics-single-0.49.0
+data:
+  scrape.yml: |
+    global:
+      scrape_interval: 15s
+      scrape_timeout: 5s
+    scrape_configs:
+    - job_name: support-desk
+      kubernetes_sd_configs:
+      - namespaces:
+          names:
+          - support-desk
+        role: pod
+      relabel_configs:
+      - action: keep
+        regex: support-app
+        source_labels:
+        - __meta_kubernetes_pod_label_app
+      - action: keep
+        regex: "true"
+        source_labels:
+        - __meta_kubernetes_pod_annotation_prometheus_io_scrape
+      - action: keep
+        regex: Running
+        source_labels:
+        - __meta_kubernetes_pod_phase
+      - action: drop
+        regex: "true"
+        source_labels:
+        - __meta_kubernetes_pod_container_init
+      - action: keep_if_equal
+        source_labels:
+        - __meta_kubernetes_pod_annotation_prometheus_io_port
+        - __meta_kubernetes_pod_container_port_number
+      - source_labels:
+        - __meta_kubernetes_pod_annotation_prometheus_io_path
+        target_label: __metrics_path__
+      - regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        source_labels:
+        - __address__
+        - __meta_kubernetes_pod_annotation_prometheus_io_port
+        target_label: __address__
+      - source_labels:
+        - __meta_kubernetes_namespace
+        target_label: namespace
+      - source_labels:
+        - __meta_kubernetes_pod_name
+        target_label: pod
+      - source_labels:
+        - __meta_kubernetes_pod_container_name
+        target_label: container
+    - job_name: postgres
+      kubernetes_sd_configs:
+      - namespaces:
+          names:
+          - support-desk
+        role: pod
+      relabel_configs:
+      - action: keep
+        regex: postgres
+        source_labels:
+        - __meta_kubernetes_pod_label_app
+      - action: keep
+        regex: "true"
+        source_labels:
+        - __meta_kubernetes_pod_annotation_prometheus_io_scrape
+      - action: keep
+        regex: Running
+        source_labels:
+        - __meta_kubernetes_pod_phase
+      - action: drop
+        regex: "true"
+        source_labels:
+        - __meta_kubernetes_pod_container_init
+      - action: keep_if_equal
+        source_labels:
+        - __meta_kubernetes_pod_annotation_prometheus_io_port
+        - __meta_kubernetes_pod_container_port_number
+      - source_labels:
+        - __meta_kubernetes_pod_annotation_prometheus_io_path
+        target_label: __metrics_path__
+      - regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        source_labels:
+        - __address__
+        - __meta_kubernetes_pod_annotation_prometheus_io_port
+        target_label: __address__
+      - source_labels:
+        - __meta_kubernetes_namespace
+        target_label: namespace
+      - source_labels:
+        - __meta_kubernetes_pod_name
+        target_label: pod
+      - source_labels:
+        - __meta_kubernetes_pod_container_name
+        target_label: container
+---
+# Source: victoria-metrics-single/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: monitoring
+  labels: 
+    app.kubernetes.io/component: server
+    app.kubernetes.io/instance: vm-single
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: victoria-metrics-single
+    app.kubernetes.io/version: v1.154.0
+    helm.sh/chart: victoria-metrics-single-0.49.0
+  name: victoria-metrics
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: http
+      port: 8428
+      protocol: TCP
+      targetPort: http
+  selector: 
+    app: server
+    app.kubernetes.io/instance: vm-single
+    app.kubernetes.io/name: victoria-metrics-single
+---
+# Source: victoria-metrics-single/templates/server.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: victoria-metrics
+  namespace: monitoring
+  labels: 
+    app.kubernetes.io/component: server
+    app.kubernetes.io/instance: vm-single
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: victoria-metrics-single
+    app.kubernetes.io/version: v1.154.0
+    helm.sh/chart: victoria-metrics-single-0.49.0
+spec:
+  podManagementPolicy: OrderedReady
+  updateStrategy: {}
+  replicas: 1
+  serviceName: victoria-metrics
+  selector:
+    matchLabels: 
+      app: server
+      app.kubernetes.io/instance: vm-single
+      app.kubernetes.io/name: victoria-metrics-single
+  template:
+    metadata:
+      labels: 
+        app: server
+        app.kubernetes.io/component: server
+        app.kubernetes.io/instance: vm-single
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: victoria-metrics-single
+    spec:
+      serviceAccountName: victoria-metrics
+      automountServiceAccountToken: true
+      securityContext: 
+        {}
+      containers:
+        - name: vmsingle
+          securityContext: 
+            {}
+          image: victoriametrics/victoria-metrics:v1.154.0
+          imagePullPolicy: IfNotPresent
+          args: 
+            - --envflag.enable
+            - --envflag.prefix=VM_
+            - --httpListenAddr=:8428
+            - --loggerFormat=json
+            - --promscrape.config=/scrapeconfig/scrape.yml
+            - --retentionPeriod=7d
+            - --storageDataPath=/storage
+          ports:
+            - name: http
+              containerPort: 8428
+          readinessProbe: 
+            failureThreshold: 3
+            httpGet:
+              path: /health
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 15
+            timeoutSeconds: 5
+          livenessProbe: 
+            failureThreshold: 10
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            tcpSocket:
+              port: http
+            timeoutSeconds: 5
+          resources: 
+            limits:
+              cpu: "1"
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          volumeMounts:
+            - name: server-volume
+              mountPath: /storage
+            - name: config-out
+              mountPath: /scrapeconfig
+            
+            
+      terminationGracePeriodSeconds: 60
+      volumes:
+        - name: config-out
+          configMap:
+            name: victoria-metrics-scrapeconfig
+        
+        
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: server-volume
+      spec:
+        accessModes: 
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 2Gi
+        storageClassName: standard

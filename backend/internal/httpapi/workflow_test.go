@@ -146,6 +146,7 @@ func TestCompetingClaimsAndConfirmations(t *testing.T) {
 	if success != 1 || conflicts != 1 {
 		t.Fatalf("claims: %d successful, %d conflicts", success, conflicts)
 	}
+	h.count("support_ticket_actions_total", "action", "claim", 1)
 
 	message := "Resolved atomically"
 	if _, err := h.a.Service.TicketAction(ctx, op, ticket.ID, service.TicketActionInput{Action: "resolve", Message: &message}); err != nil {
@@ -189,6 +190,9 @@ func TestCompetingClaimsAndConfirmations(t *testing.T) {
 	if success != 1 || conflicts != 1 {
 		t.Fatal("requester outcomes were not serialized")
 	}
+	if got := h.metric("support_ticket_actions_total", "action", "confirm").GetCounter().GetValue() + h.metric("support_ticket_actions_total", "action", "request_changes").GetCounter().GetValue(); got != 1 {
+		t.Fatalf("competing outcomes counted %v successful actions", got)
+	}
 
 	comments, err := h.a.Service.Comments(ctx, u, ticket.ID, 1, 25)
 	if err != nil || comments.Total != 2 {
@@ -226,5 +230,9 @@ func TestResolutionRollsBackMessageOnWriteFailure(t *testing.T) {
 	comments, err := h.a.Service.Comments(ctx, u, ticket.ID, 1, 25)
 	if err != nil || comments.Total != 0 {
 		t.Fatal("orphaned resolution message", err)
+	}
+	h.count("support_ticket_actions_total", "action", "resolve", 0)
+	if got := h.metric("support_ticket_resolution_duration_seconds", "priority", "medium").GetHistogram().GetSampleCount(); got != 0 {
+		t.Fatalf("rolled-back resolution counted: %d", got)
 	}
 }

@@ -130,5 +130,11 @@ func (s *Service) TicketAction(ctx context.Context, u store.User, id int64, in T
 		return nil
 	})
 
+	if err == nil {
+		s.Metrics.TicketAction(in.Action)
+		if in.Action == "resolve" {
+			s.Metrics.TicketResolved(result.Priority, result.UpdatedAt.Sub(result.CreatedAt))
+		}
+	}
 	return result, Normalize(err)
 }

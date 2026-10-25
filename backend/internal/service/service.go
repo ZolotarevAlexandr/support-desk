@@ -10,6 +10,7 @@ import (
 	"github.com/uptrace/bun"
 	"golang.org/x/crypto/bcrypt"
 	"net/mail"
+	"sre_tbank/internal/metrics"
 	"sre_tbank/internal/store"
 	"strings"
 	"time"
@@ -47,6 +48,7 @@ func Normalize(err error) error {
 
 type Service struct {
 	Store           *store.Store
+	Metrics         *metrics.Metrics
 	InviteCode      string
 	SessionDuration time.Duration
 }
@@ -175,6 +177,9 @@ func (s *Service) Login(ctx context.Context, in LoginInput) (store.User, string,
 
 	v.UserID = u.ID
 	err = s.Store.CreateSession(ctx, v)
+	if err == nil {
+		s.Metrics.Login(u.Role)
+	}
 	return u, value, Normalize(err)
 }
 
@@ -363,6 +368,9 @@ func (s *Service) CreateTicket(ctx context.Context, u store.User, in TicketInput
 	}
 
 	err := s.Store.CreateTicket(ctx, &v)
+	if err == nil {
+		s.Metrics.TicketOpened(v.Priority)
+	}
 	return v, Normalize(err)
 }
 
@@ -450,5 +458,8 @@ func (s *Service) MutateComment(ctx context.Context, u store.User, ticket, id in
 
 	result.AuthorName = u.Name
 	result.AuthorRole = u.Role
+	if err == nil && id == 0 && !remove {
+		s.Metrics.CommentAdded(u.Role)
+	}
 	return result, Normalize(err)
 }

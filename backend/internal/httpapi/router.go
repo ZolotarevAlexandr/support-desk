@@ -36,6 +36,9 @@ func (a *API) Handler() http.Handler {
 	_ = r.SetTrustedProxies(nil)
 	r.Use(a.middleware(), a.recovery())
 
+	// Metrics are served exclusively by the internal monitoring listener.
+	r.Any("/metrics", func(c *gin.Context) { c.Status(http.StatusNotFound) })
+
 	// Intentional failure for the logging lab; middleware records it at ERROR.
 	r.GET("/debug/error", func(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Intentional logging lab error"})

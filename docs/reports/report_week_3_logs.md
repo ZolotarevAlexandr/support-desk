@@ -19,7 +19,7 @@ Desk и PostgreSQL работают в namespace `support-desk`, компоне�
 | Хранение логов     | PVC 2 GiB, StorageClass `standard`, retention 7 дней           |
 | Буфер Vector       | Ограниченный дисковый буфер около 256 MiB; checkpoints на узле |
 
-Манифесты находятся в [k8s/logging](k8s/logging/README.md). Для VictoriaLogs заданы Deployment со стратегией `Recreate`,
+Манифесты находятся в [k8s/logging](../../k8s/logging/README.md). Для VictoriaLogs заданы Deployment со стратегией `Recreate`,
 ClusterIP Service на порту 9428 и PVC. Grafana использует файлы provisioning для источника данных и дашборда. Пароль
 администратора создаётся скриптом в Kubernetes Secret.
 
@@ -45,7 +45,7 @@ JSON logs. Коллектор использует ServiceAccount с права�
 Vector добавляет время runtime, `service.name=postgres`, сведения о Pod и распознанный уровень. Нераспознанный уровень
 обозначается `UNKNOWN`. Поле `source_format` позволяет отличить JSON приложения от текстовых записей базы.
 
-Конфигурация разбора и доставки: [vector-config.yaml](k8s/logging/vector-config.yaml). Checkpoints и буфер находятся на
+Конфигурация разбора и доставки: [vector-config.yaml](../../k8s/logging/vector-config.yaml). Checkpoints и буфер находятся на
 узле, поэтому сохраняются при замене Pod коллектора. PVC сохраняет записи при замене Pod VictoriaLogs.
 
 ## Формат логов приложения
@@ -98,7 +98,7 @@ _time:15m service.name:="support-desk" -path:("/healthz" OR "/readyz") | sort by
 Показывает до 200 последних записей приложения за 15 минут, начиная с самых новых. Позволяет посмотреть отдельные
 события и их поля: время, уровень, путь запроса, HTTP-статус и request ID.
 
-![1. Сырые записи за последние 15 минут](docs/logging/screenshots/01-raw.png)
+![1. Сырые записи за последние 15 минут](../logging/screenshots/01-raw.png)
 
 ### 2. Фильтр по полю уровня
 
@@ -109,7 +109,7 @@ _time:15m service.name:="support-desk" level:=ERROR -path:("/healthz" OR "/ready
 Оставляет только записи уровня ERROR за последние 15 минут. В приложении это HTTP 500 от `/debug/error`. Фильтр помогает
 быстро найти ошибки среди остальных событий.
 
-![2. Фильтр по полю уровня](docs/logging/screenshots/02-errors.png)
+![2. Фильтр по полю уровня](../logging/screenshots/02-errors.png)
 
 ### 3. Статистика с группировкой
 
@@ -120,7 +120,7 @@ _time:15m service.name:="support-desk" -path:("/healthz" OR "/readyz") | stats b
 Считает записи за 15 минут с группировкой по сервису и уровню логирования. Показывает количество событий INFO, WARN
 и ERROR без health checks.
 
-![3. Статистика с группировкой](docs/logging/screenshots/03-grouped-stats.png)
+![3. Статистика с группировкой](../logging/screenshots/03-grouped-stats.png)
 
 ### 4. Агрегация: p95 длительности по HTTP-методу
 
@@ -131,7 +131,7 @@ _time:15m service.name:="support-desk" _msg:="request" duration_ms:* method:* -p
 Оценивает 95-й перцентиль длительности HTTP-запросов в миллисекундах отдельно для каждого метода. Позволяет сравнить
 задержки GET и POST; учитываются только access-записи с полями длительности и метода, без health checks.
 
-![4. Агрегация: p95 длительности по HTTP-методу](docs/logging/screenshots/04-p95.png)
+![4. Агрегация: p95 длительности по HTTP-методу](../logging/screenshots/04-p95.png)
 
 ## Grafana
 
@@ -143,4 +143,4 @@ _time:15m service.name:="support-desk" _msg:="request" duration_ms:* method:* -p
 агрегатов используется тип запроса плагина `stats`, для сырых логов - `instant`. Данные получаются через плагин из
 VictoriaLogs.
 
-![Grafana с официальным плагином VictoriaLogs](docs/logging/screenshots/05-grafana.png)
+![Grafana с официальным плагином VictoriaLogs](../logging/screenshots/05-grafana.png)

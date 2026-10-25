@@ -28,6 +28,8 @@ docker compose down
 
 For the Kubernetes, see [k8s/README.md](k8s/README.md)
 
+For the metrics lab, see [k8s/monitoring/README.md](k8s/monitoring/README.md).
+
 Install Go 1.27+, Node 24+, and PostgreSQL 18 (or start only `db` through Compose). The database URL must point to a real database; there is no in-memory alternative.
 
 ```sh
@@ -50,6 +52,7 @@ Vite serves http://localhost:5173 and proxies `/api` to http://localhost:8080. `
 |--------------------------|----------|-----------------------------------------------------------------------------|
 | `DATABASE_URL`           | required | PostgreSQL DSN (URL-encode credentials when necessary)                      |
 | `PORT`                   | `8080`   | HTTP port                                                                   |
+| `METRICS_PORT`           | `9090`   | Internal unauthenticated `/metrics` listener; must differ from the HTTP port |
 | `LOG_LEVEL`              | `info`   | `debug`, `info`, `warn`, `error`                                            |
 | `DEPLOYMENT_ENVIRONMENT` | `local`  | Environment name attached to every JSON log event; `minikube` in Kubernetes |
 | `DB_POOL_SIZE`           | `20`     | Maximum open and idle database connections per instance                     |
@@ -61,6 +64,8 @@ Vite serves http://localhost:5173 and proxies `/api` to http://localhost:8080. `
 | `VERSION`                | `local`  | Compose image tag and build release metadata                                |
 
 Compose configures `DATABASE_URL` using its database variables and always listens on container port 8080. `PORT` chooses the published host port. Do not commit `.env`. Passwords use bcrypt cost 12 with a 12-character minimum and 72-byte maximum. The server stores only SHA-256 hashes of random 256-bit session tokens. Cookies are HttpOnly and SameSite=Lax. Go cross-origin protection rejects unsafe cross-origin requests including login and registration. Roles are fixed at registration. The invite code is never sent to the frontend as configuration or stored in the database.
+
+Only `serve` starts the metrics listener. It exports Go/process collectors and five business metric families through the Prometheus Go client, with OpenMetrics negotiation. Compose does not publish this port; the Kubernetes Service also exposes only the application port. Kubernetes monitoring discovers and scrapes each annotated Pod directly. Metrics are process-local and reset on restart; their historical samples live in VictoriaMetrics. See the [metrics report](docs/reports/report_week_4_metrics.md) for definitions and queries.
 
 ## API and permissions
 

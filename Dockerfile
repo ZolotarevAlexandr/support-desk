@@ -20,6 +20,6 @@ LABEL org.opencontainers.image.title="Support Desk" org.opencontainers.image.ver
 RUN addgroup -S -g 65532 support && adduser -S -D -H -u 65532 -G support support
 COPY --from=backend /support /support
 USER 65532:65532
-EXPOSE 8080
+EXPOSE 8080 9090
 ENTRYPOINT ["/support"]
 CMD ["serve"]

@@ -1,6 +1,7 @@
 # Support Desk in Minikube
 
 For the logging assignment, continue with [logging/README.md](logging/README.md).
+For the metrics assignment, continue with [monitoring/README.md](monitoring/README.md).
 The earlier Kubernetes report is preserved at
 [docs/kubernetes/Отчёт.md](../docs/reports/report_week_2_k8s_deployment.md).
 
@@ -20,7 +21,7 @@ Run these commands from the repository root. All manifests explicitly use the
 | `app.yaml` | Application Service and scalable Deployment |
 
 The existing Dockerfile embeds the React UI into the Go server. The application,
-migration Job, and seed Job all use `support-desk:logs-v2`. PostgreSQL uses the same
+migration Job, and seed Job all use `support-desk:metrics-v1`. PostgreSQL uses the same
 pinned image as Docker Compose. PostgreSQL uses `Recreate` to avoid overlapping
 database Pods sharing the data directory. Scale only `support-app`.
 
@@ -44,8 +45,9 @@ For the assignment's `docker-env` workflow, use the Docker container runtime:
 minikube start --driver=docker --container-runtime=docker --cpus=2 --memory=4096
 kubectl config use-context minikube
 eval "$(minikube docker-env)"
-docker build --build-arg VERSION=logs-v2 -t support-desk:logs-v2 .
-minikube image load support-desk:logs-v2
+docker build --build-arg VERSION=metrics-v1 -t support-desk:metrics-v1 .
+docker pull quay.io/prometheuscommunity/postgres-exporter:v0.20.1
+minikube image load support-desk:metrics-v1 quay.io/prometheuscommunity/postgres-exporter:v0.20.1
 minikube image ls
 ```
 
@@ -55,7 +57,12 @@ Restore the host Docker environment afterward with
 `eval "$(minikube docker-env -u)"`.
 
 If your existing Minikube uses containerd, build with the host Docker daemon
-instead and load the image with `minikube image load support-desk:logs-v2`.
+instead and load the image with `minikube image load support-desk:metrics-v1`.
+
+The PostgreSQL Pod now also runs the pinned PostgreSQL exporter on port 9187;
+its image must be available to Minikube. Application Pods expose metrics on
+9090. These ports are not included in their Services. The monitoring guide
+includes the complete image-pull and load commands.
 
 ## Deploy in order
 

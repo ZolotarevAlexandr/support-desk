@@ -14,6 +14,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"sre_tbank/internal/config"
+	"sre_tbank/internal/metrics"
 	"sre_tbank/internal/service"
 	"sre_tbank/internal/store"
 	"sre_tbank/migrations"
@@ -69,7 +70,7 @@ func setup(t *testing.T) *harness {
 	}
 
 	c := config.Config{QueryTimeout: 10 * time.Second, SessionDuration: time.Hour, InviteCode: "private-invite"}
-	a := &API{Service: &service.Service{Store: s, SessionDuration: c.SessionDuration, InviteCode: c.InviteCode}, Config: c, Logger: slog.New(slog.NewJSONHandler(io.Discard, nil))}
+	a := &API{Service: &service.Service{Store: s, Metrics: metrics.New(), SessionDuration: c.SessionDuration, InviteCode: c.InviteCode}, Config: c, Logger: slog.New(slog.NewJSONHandler(io.Discard, nil))}
 	return &harness{t, a, a.Handler()}
 }
 

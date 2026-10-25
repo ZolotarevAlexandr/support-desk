@@ -1,0 +1,97 @@
+# victoria-metrics-single chart 0.49.0; application v1.154.0.
+rbac:
+  create: false
+serviceAccount:
+  create: true
+  name: victoria-metrics
+  automountToken: true
+server:
+  fullnameOverride: victoria-metrics
+  image:
+    tag: v1.154.0
+  replicaCount: 1
+  retentionPeriod: 7d
+  persistentVolume:
+    enabled: true
+    storageClassName: standard
+    size: 2Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+  service:
+    type: ClusterIP
+  scrape:
+    enabled: true
+    config:
+      global:
+        scrape_interval: 15s
+        scrape_timeout: 5s
+      scrape_configs:
+        - job_name: support-desk
+          kubernetes_sd_configs:
+            - role: pod
+              namespaces:
+                names: [support-desk]
+          relabel_configs:
+            - action: keep
+              source_labels: [__meta_kubernetes_pod_label_app]
+              regex: support-app
+            - action: keep
+              source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+              regex: "true"
+            - action: keep
+              source_labels: [__meta_kubernetes_pod_phase]
+              regex: Running
+            - action: drop
+              source_labels: [__meta_kubernetes_pod_container_init]
+              regex: "true"
+            - action: keep_if_equal
+              source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port, __meta_kubernetes_pod_container_port_number]
+            - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+              target_label: __metrics_path__
+            - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+              regex: '([^:]+)(?::\d+)?;(\d+)'
+              replacement: '$1:$2'
+              target_label: __address__
+            - source_labels: [__meta_kubernetes_namespace]
+              target_label: namespace
+            - source_labels: [__meta_kubernetes_pod_name]
+              target_label: pod
+            - source_labels: [__meta_kubernetes_pod_container_name]
+              target_label: container
+        - job_name: postgres
+          kubernetes_sd_configs:
+            - role: pod
+              namespaces:
+                names: [support-desk]
+          relabel_configs:
+            - action: keep
+              source_labels: [__meta_kubernetes_pod_label_app]
+              regex: postgres
+            - action: keep
+              source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+              regex: "true"
+            - action: keep
+              source_labels: [__meta_kubernetes_pod_phase]
+              regex: Running
+            - action: drop
+              source_labels: [__meta_kubernetes_pod_container_init]
+              regex: "true"
+            - action: keep_if_equal
+              source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port, __meta_kubernetes_pod_container_port_number]
+            - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+              target_label: __metrics_path__
+            - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+              regex: '([^:]+)(?::\d+)?;(\d+)'
+              replacement: '$1:$2'
+              target_label: __address__
+            - source_labels: [__meta_kubernetes_namespace]
+              target_label: namespace
+            - source_labels: [__meta_kubernetes_pod_name]
+              target_label: pod
+            - source_labels: [__meta_kubernetes_pod_container_name]
+              target_label: container

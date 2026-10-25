@@ -107,7 +107,7 @@ It prints request IDs and statuses, never session cookies. Each run leaves a
 ticket and comment. Python 3 uses only the standard library.
 
 Open vmui, paste the four queries from the
-[root report](../../Отчёт.md#четыре-запроса-в-vmui), and execute them. Use the JSON
+[root report](../../docs/reports/report_week_3_logs.md#четыре-запроса-в-vmui), and execute them. Use the JSON
 view to show all returned fields. `timestamp` maps to `_time`, `message` maps to
 `_msg`, and workload identity fields form `_stream`. Application 4xx access events
 have level `WARN`, 5xx have `ERROR`, and successful requests have `INFO`.

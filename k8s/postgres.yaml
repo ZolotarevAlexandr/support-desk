@@ -39,6 +39,10 @@ spec:
       app: postgres
   template:
     metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9187"
+        prometheus.io/path: "/metrics"
       labels:
         app: postgres
     spec:
@@ -95,6 +99,56 @@ spec:
             - name: data
               # PostgreSQL 18 stores versioned PGDATA under this directory.
               mountPath: /var/lib/postgresql
+        - name: postgres-exporter
+          image: quay.io/prometheuscommunity/postgres-exporter:v0.20.1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: support-config
+                  key: POSTGRES_DB
+            - name: DATA_SOURCE_URI
+              value: "127.0.0.1:5432/$(POSTGRES_DB)?sslmode=disable"
+            - name: DATA_SOURCE_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: support-config
+                  key: POSTGRES_USER
+            - name: DATA_SOURCE_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: support-secret
+                  key: POSTGRES_PASSWORD
+          ports:
+            - name: metrics
+              containerPort: 9187
+          startupProbe:
+            tcpSocket:
+              port: metrics
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            tcpSocket:
+              port: metrics
+          livenessProbe:
+            tcpSocket:
+              port: metrics
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
       volumes:
         - name: data
           persistentVolumeClaim:

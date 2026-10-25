@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"github.com/pressly/goose/v3"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"sre_tbank/internal/config"
 	"sre_tbank/internal/httpapi"
 	"sre_tbank/internal/logging"
+	"sre_tbank/internal/metrics"
 	"sre_tbank/internal/service"
 	"sre_tbank/internal/store"
 	"sre_tbank/migrations"
@@ -89,37 +91,63 @@ func run() error {
 		return fmt.Errorf("database startup check: %w", err)
 	}
 
-	api := &httpapi.API{Service: &service.Service{Store: db, InviteCode: c.InviteCode, SessionDuration: c.SessionDuration}, Config: c, Logger: logger}
+	observations := metrics.New()
+	api := &httpapi.API{Service: &service.Service{Store: db, Metrics: observations, InviteCode: c.InviteCode, SessionDuration: c.SessionDuration}, Config: c, Logger: logger}
 	server := &http.Server{Addr: ":" + c.Port, Handler: api.Handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: c.QueryTimeout + 5*time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 1 << 20}
+	monitoring := &http.Server{Addr: ":" + c.MetricsPort, Handler: observations.Handler(), ReadHeaderTimeout: 5 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second}
 
 	stop, done := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer done()
 
-	failures := make(chan error, 1)
-	go func() {
-		logger.Info("listening", "port", c.Port, "version", version)
-		failures <- server.ListenAndServe()
-	}()
+	return serve(stop, c.ShutdownTimeout, func() { api.ShuttingDown.Store(true) }, server, monitoring)
+}
 
+// Bind every port before serving. A failed metrics bind must not leave a
+// partially started application listening on its business port.
+func serve(stop context.Context, timeout time.Duration, shuttingDown func(), servers ...*http.Server) error {
+	listeners := make([]net.Listener, 0, len(servers))
+	defer func() {
+		for _, listener := range listeners {
+			_ = listener.Close()
+		}
+	}()
+	for _, server := range servers {
+		listener, err := net.Listen("tcp", server.Addr)
+		if err != nil {
+			return err
+		}
+		listeners = append(listeners, listener)
+	}
+	failures := make(chan error, len(servers))
+	for i, server := range servers {
+		slog.Info("listening", "address", listeners[i].Addr().String(), "version", version)
+		go func() { failures <- server.Serve(listeners[i]) }()
+	}
+	var serveErr error
 	select {
 	case err := <-failures:
 		if !errors.Is(err, http.ErrServerClosed) {
-			return err
+			serveErr = err
 		}
-
-		return nil
 	case <-stop.Done():
 	}
 
-	api.ShuttingDown.Store(true)
-	shutdown, cancel := context.WithTimeout(context.Background(), c.ShutdownTimeout)
+	shuttingDown()
+	shutdown, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-
-	logger.Info("shutting down")
-	if err := server.Shutdown(shutdown); err != nil {
-		_ = server.Close()
-		return err
+	slog.Info("shutting down")
+	results := make(chan error, len(servers))
+	for _, server := range servers {
+		go func() {
+			err := server.Shutdown(shutdown)
+			if err != nil {
+				_ = server.Close()
+			}
+			results <- err
+		}()
 	}
-
-	return nil
+	for range servers {
+		serveErr = errors.Join(serveErr, <-results)
+	}
+	return serveErr
 }
