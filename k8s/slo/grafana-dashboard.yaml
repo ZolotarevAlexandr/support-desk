@@ -1,0 +1,569 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-slo-dashboard
+  namespace: logging
+data:
+  support-slo.json: |
+    {
+      "uid": "support-slo",
+      "title": "Support Desk — SLI / SLO / SLA",
+      "schemaVersion": 41,
+      "version": 1,
+      "timezone": "utc",
+      "refresh": "15s",
+      "time": {
+        "from": "now-45m",
+        "to": "now"
+      },
+      "tags": [
+        "slo-lab"
+      ],
+      "panels": [
+        {
+          "id": 1,
+          "title": "Business SLI / SLO ≥ 99% · rolling 5m",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "description": "Three existing business counters divided by matching completed eligible attempts. Zero with no eligible observations.",
+          "gridPos": {
+            "x": 0,
+            "y": 0,
+            "w": 12,
+            "h": 8
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "100 * (((sum(increase(support_tickets_opened_total{job=\"support-desk\"}[5m])) / sum(increase(support_ticket_open_attempts_total{job=\"support-desk\"}[5m]))) and (sum(increase(support_ticket_open_attempts_total{job=\"support-desk\"}[5m])) > 0)) or vector(0))",
+              "legendFormat": "ticket",
+              "interval": "15s",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "victoriametrics"
+              }
+            },
+            {
+              "refId": "B",
+              "expr": "100 * (((sum(increase(support_comments_added_total{job=\"support-desk\"}[5m])) / sum(increase(support_comment_add_attempts_total{job=\"support-desk\"}[5m]))) and (sum(increase(support_comment_add_attempts_total{job=\"support-desk\"}[5m])) > 0)) or vector(0))",
+              "legendFormat": "comment",
+              "interval": "15s",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "victoriametrics"
+              }
+            },
+            {
+              "refId": "C",
+              "expr": "100 * (((sum(increase(support_ticket_actions_total{job=\"support-desk\"}[5m])) / sum(increase(support_ticket_action_attempts_total{job=\"support-desk\"}[5m]))) and (sum(increase(support_ticket_action_attempts_total{job=\"support-desk\"}[5m])) > 0)) or vector(0))",
+              "legendFormat": "action",
+              "interval": "15s",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "victoriametrics"
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "decimals": 2,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 99
+                  }
+                ]
+              },
+              "custom": {
+                "thresholdsStyle": {
+                  "mode": "line"
+                }
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "lastNotNull"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi"
+            }
+          }
+        },
+        {
+          "id": 2,
+          "title": "Synthetic request p95 / SLO < 1s · rolling 5m",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "description": "",
+          "gridPos": {
+            "x": 12,
+            "y": 0,
+            "w": 12,
+            "h": 8
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "histogram_quantile(0.95, sum by (le) (rate(support_probe_duration_seconds_bucket{job=\"slo-prober\"}[5m])))",
+              "legendFormat": "p95",
+              "interval": "15s",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "victoriametrics"
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "decimals": 2,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              },
+              "custom": {
+                "thresholdsStyle": {
+                  "mode": "line"
+                }
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "lastNotNull"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi"
+            }
+          }
+        },
+        {
+          "id": 3,
+          "title": "Combined SLA ≥ 99% · rolling 30m",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "description": "Fixed 15s evaluation grid. Missing or stale probes are bad intervals. Prewarm 30m. SLI recovery still needs five minutes to expire old failures.",
+          "gridPos": {
+            "x": 0,
+            "y": 8,
+            "w": 12,
+            "h": 8
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "100 * avg_over_time(((((((sum(increase(support_tickets_opened_total{job=\"support-desk\"}[5m])) / sum(increase(support_ticket_open_attempts_total{job=\"support-desk\"}[5m]))) and (sum(increase(support_ticket_open_attempts_total{job=\"support-desk\"}[5m])) > 0)) or vector(0)) >= bool 0.99) * ((((sum(increase(support_comments_added_total{job=\"support-desk\"}[5m])) / sum(increase(support_comment_add_attempts_total{job=\"support-desk\"}[5m]))) and (sum(increase(support_comment_add_attempts_total{job=\"support-desk\"}[5m])) > 0)) or vector(0)) >= bool 0.99) * ((((sum(increase(support_ticket_actions_total{job=\"support-desk\"}[5m])) / sum(increase(support_ticket_action_attempts_total{job=\"support-desk\"}[5m]))) and (sum(increase(support_ticket_action_attempts_total{job=\"support-desk\"}[5m])) > 0)) or vector(0)) >= bool 0.99) * ((histogram_quantile(0.95, sum by (le) (rate(support_probe_duration_seconds_bucket{job=\"slo-prober\"}[5m])))) < bool 1) * (max(up{job=\"slo-prober\"}) == bool 1) * (max(up{job=\"support-desk\"}) == bool 1) * ((time() - max(support_probe_last_round_timestamp_seconds{job=\"slo-prober\"})) < bool 45) * (min(support_probe_success{job=\"slo-prober\"}) == bool 1) * (count(support_probe_success{job=\"slo-prober\"}) == bool 3)) or vector(0))[30m:15s])",
+              "legendFormat": "SLA",
+              "interval": "15s",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "victoriametrics"
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "decimals": 2,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 99
+                  }
+                ]
+              },
+              "custom": {
+                "thresholdsStyle": {
+                  "mode": "line"
+                }
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "lastNotNull"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi"
+            }
+          }
+        },
+        {
+          "id": 4,
+          "title": "Remaining 30m error budget · allowance 18s",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "description": "The line at 0s marks budget exhaustion. Negative values mean overspend. One bad 15s slot consumes most of the 18s allowance.",
+          "gridPos": {
+            "x": 12,
+            "y": 8,
+            "w": 12,
+            "h": 8
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "18 - (1800 * (1 - (100 * avg_over_time(((((((sum(increase(support_tickets_opened_total{job=\"support-desk\"}[5m])) / sum(increase(support_ticket_open_attempts_total{job=\"support-desk\"}[5m]))) and (sum(increase(support_ticket_open_attempts_total{job=\"support-desk\"}[5m])) > 0)) or vector(0)) >= bool 0.99) * ((((sum(increase(support_comments_added_total{job=\"support-desk\"}[5m])) / sum(increase(support_comment_add_attempts_total{job=\"support-desk\"}[5m]))) and (sum(increase(support_comment_add_attempts_total{job=\"support-desk\"}[5m])) > 0)) or vector(0)) >= bool 0.99) * ((((sum(increase(support_ticket_actions_total{job=\"support-desk\"}[5m])) / sum(increase(support_ticket_action_attempts_total{job=\"support-desk\"}[5m]))) and (sum(increase(support_ticket_action_attempts_total{job=\"support-desk\"}[5m])) > 0)) or vector(0)) >= bool 0.99) * ((histogram_quantile(0.95, sum by (le) (rate(support_probe_duration_seconds_bucket{job=\"slo-prober\"}[5m])))) < bool 1) * (max(up{job=\"slo-prober\"}) == bool 1) * (max(up{job=\"support-desk\"}) == bool 1) * ((time() - max(support_probe_last_round_timestamp_seconds{job=\"slo-prober\"})) < bool 45) * (min(support_probe_success{job=\"slo-prober\"}) == bool 1) * (count(support_probe_success{job=\"slo-prober\"}) == bool 3)) or vector(0))[30m:15s])) / 100))",
+              "legendFormat": "remaining",
+              "interval": "15s",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "victoriametrics"
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "decimals": 2,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 0
+                  }
+                ]
+              },
+              "custom": {
+                "thresholdsStyle": {
+                  "mode": "line"
+                }
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "lastNotNull"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi"
+            }
+          }
+        },
+        {
+          "id": 5,
+          "title": "Latest interval compliance and latest business probes",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "description": "The line at 1 marks a fully good interval and a successful result for every business probe.",
+          "gridPos": {
+            "x": 0,
+            "y": 16,
+            "w": 12,
+            "h": 8
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "(((((sum(increase(support_tickets_opened_total{job=\"support-desk\"}[5m])) / sum(increase(support_ticket_open_attempts_total{job=\"support-desk\"}[5m]))) and (sum(increase(support_ticket_open_attempts_total{job=\"support-desk\"}[5m])) > 0)) or vector(0)) >= bool 0.99) * ((((sum(increase(support_comments_added_total{job=\"support-desk\"}[5m])) / sum(increase(support_comment_add_attempts_total{job=\"support-desk\"}[5m]))) and (sum(increase(support_comment_add_attempts_total{job=\"support-desk\"}[5m])) > 0)) or vector(0)) >= bool 0.99) * ((((sum(increase(support_ticket_actions_total{job=\"support-desk\"}[5m])) / sum(increase(support_ticket_action_attempts_total{job=\"support-desk\"}[5m]))) and (sum(increase(support_ticket_action_attempts_total{job=\"support-desk\"}[5m])) > 0)) or vector(0)) >= bool 0.99) * ((histogram_quantile(0.95, sum by (le) (rate(support_probe_duration_seconds_bucket{job=\"slo-prober\"}[5m])))) < bool 1) * (max(up{job=\"slo-prober\"}) == bool 1) * (max(up{job=\"support-desk\"}) == bool 1) * ((time() - max(support_probe_last_round_timestamp_seconds{job=\"slo-prober\"})) < bool 45) * (min(support_probe_success{job=\"slo-prober\"}) == bool 1) * (count(support_probe_success{job=\"slo-prober\"}) == bool 3)) or vector(0)",
+              "legendFormat": "all SLOs good",
+              "interval": "15s",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "victoriametrics"
+              }
+            },
+            {
+              "refId": "B",
+              "expr": "support_probe_success{job=\"slo-prober\"}",
+              "legendFormat": "{{operation}} probe",
+              "interval": "15s",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "victoriametrics"
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 2,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              },
+              "custom": {
+                "thresholdsStyle": {
+                  "mode": "line"
+                }
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "lastNotNull"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi"
+            }
+          }
+        },
+        {
+          "id": 6,
+          "title": "Independent black-box request success · 5m",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "description": "The line at 99% is the request-based target. Black-box results include connection failures, timeouts and 4xx; application metrics cannot observe requests that never reach it.",
+          "gridPos": {
+            "x": 12,
+            "y": 16,
+            "w": 12,
+            "h": 8
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "100 * ((sum(increase(support_probe_successes_total{job=\"slo-prober\"}[5m])) / sum(increase(support_probe_attempts_total{job=\"slo-prober\"}[5m]))))",
+              "legendFormat": "probe success %",
+              "interval": "15s",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "victoriametrics"
+              }
+            },
+            {
+              "refId": "B",
+              "expr": "100 * clamp_max(((count_over_time((max(up{job=\"slo-prober\"}) == 1)[30m:15s])) or vector(0)) / 120, 1)",
+              "legendFormat": "scrape coverage %",
+              "interval": "15s",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "victoriametrics"
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "decimals": 2,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 99
+                  }
+                ]
+              },
+              "custom": {
+                "thresholdsStyle": {
+                  "mode": "line"
+                }
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "lastNotNull"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi"
+            }
+          }
+        },
+        {
+          "id": 7,
+          "title": "Raw business operations · rolling 5m increases · zero reference",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "description": "The zero line is a diagnostic reference; SLO targets are shown in the business SLI panel above.",
+          "gridPos": {
+            "x": 0,
+            "y": 24,
+            "w": 24,
+            "h": 8
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum(increase(support_tickets_opened_total{job=\"support-desk\"}[5m]))",
+              "legendFormat": "ticket successes",
+              "interval": "15s",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "victoriametrics"
+              }
+            },
+            {
+              "refId": "B",
+              "expr": "sum(increase(support_ticket_open_attempts_total{job=\"support-desk\"}[5m]))",
+              "legendFormat": "ticket attempts",
+              "interval": "15s",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "victoriametrics"
+              }
+            },
+            {
+              "refId": "C",
+              "expr": "sum(increase(support_comments_added_total{job=\"support-desk\"}[5m]))",
+              "legendFormat": "comment successes",
+              "interval": "15s",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "victoriametrics"
+              }
+            },
+            {
+              "refId": "D",
+              "expr": "sum(increase(support_comment_add_attempts_total{job=\"support-desk\"}[5m]))",
+              "legendFormat": "comment attempts",
+              "interval": "15s",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "victoriametrics"
+              }
+            },
+            {
+              "refId": "E",
+              "expr": "sum(increase(support_ticket_actions_total{job=\"support-desk\"}[5m]))",
+              "legendFormat": "action successes",
+              "interval": "15s",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "victoriametrics"
+              }
+            },
+            {
+              "refId": "F",
+              "expr": "sum(increase(support_ticket_action_attempts_total{job=\"support-desk\"}[5m]))",
+              "legendFormat": "action attempts",
+              "interval": "15s",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "victoriametrics"
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 2,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 0
+                  }
+                ]
+              },
+              "custom": {
+                "thresholdsStyle": {
+                  "mode": "line"
+                }
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "lastNotNull"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi"
+            }
+          }
+        }
+      ]
+    }

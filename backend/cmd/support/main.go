@@ -92,7 +92,7 @@ func run() error {
 	}
 
 	observations := metrics.New()
-	api := &httpapi.API{Service: &service.Service{Store: db, Metrics: observations, InviteCode: c.InviteCode, SessionDuration: c.SessionDuration}, Config: c, Logger: logger}
+	api := &httpapi.API{Service: &service.Service{Store: db, Metrics: observations, InviteCode: c.InviteCode, SessionDuration: c.SessionDuration, Faults: service.FaultInjector{Rate: c.LabFaultRate, Delay: c.LabFaultDelay}}, Config: c, Logger: logger}
 	server := &http.Server{Addr: ":" + c.Port, Handler: api.Handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: c.QueryTimeout + 5*time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 1 << 20}
 	monitoring := &http.Server{Addr: ":" + c.MetricsPort, Handler: observations.Handler(), ReadHeaderTimeout: 5 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second}
 

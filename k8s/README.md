@@ -21,7 +21,7 @@ Run these commands from the repository root. All manifests explicitly use the
 | `app.yaml` | Application Service and scalable Deployment |
 
 The existing Dockerfile embeds the React UI into the Go server. The application,
-migration Job, and seed Job all use `support-desk:metrics-v1`. PostgreSQL uses the same
+migration Job, and seed Job all use `support-desk:slo-v1`. PostgreSQL uses the same
 pinned image as Docker Compose. PostgreSQL uses `Recreate` to avoid overlapping
 database Pods sharing the data directory. Scale only `support-app`.
 
@@ -45,9 +45,10 @@ For the assignment's `docker-env` workflow, use the Docker container runtime:
 minikube start --driver=docker --container-runtime=docker --cpus=2 --memory=4096
 kubectl config use-context minikube
 eval "$(minikube docker-env)"
-docker build --build-arg VERSION=metrics-v1 -t support-desk:metrics-v1 .
+docker build --build-arg VERSION=slo-v1 -t support-desk:slo-v1 .
+docker build -f scripts/Dockerfile.prober -t support-prober:slo-v1 .
 docker pull quay.io/prometheuscommunity/postgres-exporter:v0.20.1
-minikube image load support-desk:metrics-v1 quay.io/prometheuscommunity/postgres-exporter:v0.20.1
+minikube image load support-desk:slo-v1 support-prober:slo-v1 quay.io/prometheuscommunity/postgres-exporter:v0.20.1
 minikube image ls
 ```
 
@@ -57,7 +58,7 @@ Restore the host Docker environment afterward with
 `eval "$(minikube docker-env -u)"`.
 
 If your existing Minikube uses containerd, build with the host Docker daemon
-instead and load the image with `minikube image load support-desk:metrics-v1`.
+instead and load the image with `minikube image load support-desk:slo-v1`.
 
 The PostgreSQL Pod now also runs the pinned PostgreSQL exporter on port 9187;
 its image must be available to Minikube. Application Pods expose metrics on
@@ -168,3 +169,6 @@ kubectl --context=minikube -n support-desk scale deployment/postgres --replicas=
 This preserves the PVC for later deployment. Deleting the namespace or PVC can
 delete its stored database data. The earlier Kubernetes assignment required a screen recording. The current
 logging archive uses the root report and screenshots; see `logging/README.md`.
+
+The SLO lab also deploys `support-prober:slo-v1` and creates its credential Secret once.
+See [the SLO guide](slo/README.md) for the Grafana dashboard and degradation demonstration.

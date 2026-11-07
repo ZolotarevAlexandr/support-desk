@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: support-prober
+  namespace: support-desk
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: support-prober
+  template:
+    metadata:
+      labels:
+        app: support-prober
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9115'
+        prometheus.io/path: /metrics
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: prober
+        image: support-prober:slo-v1
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: PROBE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: support-prober
+              key: password
+        - name: OPERATOR_INVITE_CODE
+          valueFrom:
+            secretKeyRef:
+              name: support-secret
+              key: OPERATOR_INVITE_CODE
+        - name: PROBE_INTERVAL
+          value: '10'
+        ports:
+        - name: metrics
+          containerPort: 9115
+        resources:
+          requests:
+            cpu: 25m
+            memory: 32Mi
+          limits:
+            cpu: 250m
+            memory: 128Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: [ALL]
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: metrics
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: metrics
+          periodSeconds: 10

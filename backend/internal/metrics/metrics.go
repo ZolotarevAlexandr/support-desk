@@ -12,12 +12,15 @@ import (
 )
 
 type Metrics struct {
-	Registry   *prometheus.Registry
-	tickets    *prometheus.CounterVec
-	actions    *prometheus.CounterVec
-	comments   *prometheus.CounterVec
-	logins     *prometheus.CounterVec
-	resolution *prometheus.HistogramVec
+	Registry           *prometheus.Registry
+	tickets            *prometheus.CounterVec
+	ticketOpenAttempts *prometheus.CounterVec
+	actions            *prometheus.CounterVec
+	actionAttempts     *prometheus.CounterVec
+	comments           *prometheus.CounterVec
+	commentAttempts    *prometheus.CounterVec
+	logins             *prometheus.CounterVec
+	resolution         *prometheus.HistogramVec
 }
 
 func New() *Metrics {
@@ -26,11 +29,20 @@ func New() *Metrics {
 		tickets: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "support_tickets_opened_total", Help: "Successfully persisted new tickets by initial priority.",
 		}, []string{"priority"}),
+		ticketOpenAttempts: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "support_ticket_open_attempts_total", Help: "Eligible attempts to create tickets by initial priority.",
+		}, []string{"priority"}),
 		actions: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "support_ticket_actions_total", Help: "Successfully committed ticket workflow actions.",
 		}, []string{"action"}),
+		actionAttempts: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "support_ticket_action_attempts_total", Help: "Eligible attempts to perform ticket workflow actions.",
+		}, []string{"action"}),
 		comments: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "support_comments_added_total", Help: "Successfully committed explicit comments, excluding workflow messages.",
+		}, []string{"author_role"}),
+		commentAttempts: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "support_comment_add_attempts_total", Help: "Eligible attempts to add explicit comments by author role.",
 		}, []string{"author_role"}),
 		logins: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "support_logins_total", Help: "Successful explicit logins with a persisted session, excluding registration.",
@@ -41,16 +53,19 @@ func New() *Metrics {
 		}, []string{"priority"}),
 	}
 	m.Registry.MustRegister(collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
-		m.tickets, m.actions, m.comments, m.logins, m.resolution)
+		m.tickets, m.ticketOpenAttempts, m.actions, m.actionAttempts, m.comments, m.commentAttempts, m.logins, m.resolution)
 	for _, priority := range []string{"low", "medium", "high", "urgent"} {
 		m.tickets.WithLabelValues(priority)
+		m.ticketOpenAttempts.WithLabelValues(priority)
 		m.resolution.WithLabelValues(priority)
 	}
 	for _, action := range []string{"claim", "reassign", "resolve", "confirm", "request_changes", "reopen"} {
 		m.actions.WithLabelValues(action)
+		m.actionAttempts.WithLabelValues(action)
 	}
 	for _, role := range []string{"user", "operator"} {
 		m.comments.WithLabelValues(role)
+		m.commentAttempts.WithLabelValues(role)
 		m.logins.WithLabelValues(role)
 	}
 	return m
@@ -69,15 +84,33 @@ func (m *Metrics) TicketOpened(priority string) {
 	}
 }
 
+func (m *Metrics) TicketOpenAttempt(priority string) {
+	if m != nil {
+		m.ticketOpenAttempts.WithLabelValues(priority).Inc()
+	}
+}
+
 func (m *Metrics) TicketAction(action string) {
 	if m != nil {
 		m.actions.WithLabelValues(action).Inc()
 	}
 }
 
+func (m *Metrics) TicketActionAttempt(action string) {
+	if m != nil {
+		m.actionAttempts.WithLabelValues(action).Inc()
+	}
+}
+
 func (m *Metrics) CommentAdded(role string) {
 	if m != nil {
 		m.comments.WithLabelValues(role).Inc()
+	}
+}
+
+func (m *Metrics) CommentAddAttempt(role string) {
+	if m != nil {
+		m.commentAttempts.WithLabelValues(role).Inc()
 	}
 }
 

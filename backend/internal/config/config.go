@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"time"
@@ -11,6 +12,8 @@ type Config struct {
 	DatabaseURL, Port, MetricsPort, LogLevel, InviteCode string
 	PoolSize                                             int
 	QueryTimeout, ShutdownTimeout, SessionDuration       time.Duration
+	LabFaultRate                                         float64
+	LabFaultDelay                                        time.Duration
 	SecureCookie                                         bool
 }
 
@@ -48,6 +51,14 @@ func Load() (Config, error) {
 	c.SecureCookie, err = strconv.ParseBool(env("SECURE_COOKIE", "false"))
 	if err != nil {
 		return c, fmt.Errorf("invalid SECURE_COOKIE")
+	}
+	c.LabFaultRate, err = strconv.ParseFloat(env("LAB_FAULT_RATE", "0"), 64)
+	if err != nil || math.IsNaN(c.LabFaultRate) || math.IsInf(c.LabFaultRate, 0) || c.LabFaultRate < 0 || c.LabFaultRate > 1 {
+		return c, fmt.Errorf("invalid LAB_FAULT_RATE")
+	}
+	c.LabFaultDelay, err = time.ParseDuration(env("LAB_FAULT_DELAY", "0s"))
+	if err != nil || c.LabFaultDelay < 0 {
+		return c, fmt.Errorf("invalid LAB_FAULT_DELAY")
 	}
 
 	switch c.LogLevel {

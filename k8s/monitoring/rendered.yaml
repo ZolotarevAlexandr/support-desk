@@ -118,6 +118,51 @@ data:
       - source_labels:
         - __meta_kubernetes_pod_container_name
         target_label: container
+    - job_name: slo-prober
+      kubernetes_sd_configs:
+      - namespaces:
+          names:
+          - support-desk
+        role: pod
+      relabel_configs:
+      - action: keep
+        regex: support-prober
+        source_labels:
+        - __meta_kubernetes_pod_label_app
+      - action: keep
+        regex: "true"
+        source_labels:
+        - __meta_kubernetes_pod_annotation_prometheus_io_scrape
+      - action: keep
+        regex: Running
+        source_labels:
+        - __meta_kubernetes_pod_phase
+      - action: drop
+        regex: "true"
+        source_labels:
+        - __meta_kubernetes_pod_container_init
+      - action: keep_if_equal
+        source_labels:
+        - __meta_kubernetes_pod_annotation_prometheus_io_port
+        - __meta_kubernetes_pod_container_port_number
+      - source_labels:
+        - __meta_kubernetes_pod_annotation_prometheus_io_path
+        target_label: __metrics_path__
+      - regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        source_labels:
+        - __address__
+        - __meta_kubernetes_pod_annotation_prometheus_io_port
+        target_label: __address__
+      - source_labels:
+        - __meta_kubernetes_namespace
+        target_label: namespace
+      - source_labels:
+        - __meta_kubernetes_pod_name
+        target_label: pod
+      - source_labels:
+        - __meta_kubernetes_pod_container_name
+        target_label: container
 ---
 # Source: victoria-metrics-single/templates/service.yaml
 apiVersion: v1

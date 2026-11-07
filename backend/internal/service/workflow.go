@@ -16,8 +16,7 @@ type TicketActionInput struct {
 
 // TicketAction holds the parent row lock through both the transition and its
 // conversation message. Claims and requester confirmations cannot race each other.
-func (s *Service) TicketAction(ctx context.Context, u store.User, id int64, in TicketActionInput) (store.Ticket, error) {
-	var result store.Ticket
+func (s *Service) TicketAction(ctx context.Context, u store.User, id int64, in TicketActionInput) (result store.Ticket, err error) {
 	if !valid(in.Action, "claim", "reassign", "resolve", "confirm", "request_changes", "reopen") {
 		return result, Bad("Unknown ticket action")
 	}
@@ -40,7 +39,8 @@ func (s *Service) TicketAction(ctx context.Context, u store.User, id int64, in T
 		}
 	}
 
-	err := s.Store.MutateTicket(ctx, u, id, func(ctx context.Context, tx bun.Tx, v *store.Ticket) error {
+	defer func() { businessAttempt(err, func() { s.Metrics.TicketActionAttempt(in.Action) }) }()
+	err = s.Store.MutateTicket(ctx, u, id, func(ctx context.Context, tx bun.Tx, v *store.Ticket) error {
 		if valid(in.Action, "confirm", "request_changes") {
 			if v.RequesterID != u.ID {
 				return &Error{Status: 403, Code: "forbidden", Message: "Only the requester can confirm the outcome"}
@@ -110,6 +110,9 @@ func (s *Service) TicketAction(ctx context.Context, u store.User, id int64, in T
 			}
 		}
 
+		if err := s.Faults.Apply(ctx); err != nil {
+			return err
+		}
 		if message != "" {
 			comment := store.Comment{TicketID: v.ID, AuthorID: u.ID, Body: message}
 			if err := store.InsertComment(ctx, tx, &comment); err != nil {

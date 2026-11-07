@@ -9,6 +9,7 @@ import (
 	"errors"
 	"github.com/uptrace/bun"
 	"golang.org/x/crypto/bcrypt"
+	mathrand "math/rand"
 	"net/mail"
 	"sre_tbank/internal/metrics"
 	"sre_tbank/internal/store"
@@ -51,6 +52,40 @@ type Service struct {
 	Metrics         *metrics.Metrics
 	InviteCode      string
 	SessionDuration time.Duration
+	Faults          FaultInjector
+}
+
+// FaultInjector provides a deliberately disabled-by-default failure mode for
+// the SLO demonstration. It is applied only after a valid business operation
+// is validated; eligible attempts are recorded on completion.
+type FaultInjector struct {
+	Rate  float64
+	Delay time.Duration
+}
+
+func (f FaultInjector) Apply(ctx context.Context) error {
+	if f.Delay > 0 {
+		timer := time.NewTimer(f.Delay)
+		select {
+		case <-timer.C:
+		case <-ctx.Done():
+			timer.Stop()
+			return ctx.Err()
+		}
+	}
+	if f.Rate > 0 && mathrand.Float64() < f.Rate {
+		return &Error{Status: 503, Code: "lab_fault", Message: "Synthetic SLO demonstration failure"}
+	}
+	return nil
+}
+
+// Completed attempts exclude client rejections; internal errors consume budget.
+func businessAttempt(err error, increment func()) {
+	var rejected *Error
+	if errors.As(Normalize(err), &rejected) && rejected.Status < 500 {
+		return
+	}
+	increment()
 }
 
 type RegisterInput struct {
@@ -357,8 +392,8 @@ func applyTicket(v *store.Ticket, in TicketInput) error {
 	return nil
 }
 
-func (s *Service) CreateTicket(ctx context.Context, u store.User, in TicketInput) (store.Ticket, error) {
-	v := store.Ticket{RequesterID: u.ID, RequesterName: u.Name, Priority: "medium", Status: "open"}
+func (s *Service) CreateTicket(ctx context.Context, u store.User, in TicketInput) (v store.Ticket, err error) {
+	v = store.Ticket{RequesterID: u.ID, RequesterName: u.Name, Priority: "medium", Status: "open"}
 	if in.Title == nil || in.Description == nil || in.CategoryID == nil {
 		return v, Bad("Title, description and category are required")
 	}
@@ -367,7 +402,11 @@ func (s *Service) CreateTicket(ctx context.Context, u store.User, in TicketInput
 		return v, err
 	}
 
-	err := s.Store.CreateTicket(ctx, &v)
+	defer func() { businessAttempt(err, func() { s.Metrics.TicketOpenAttempt(v.Priority) }) }()
+	if err = s.Faults.Apply(ctx); err != nil {
+		return v, err
+	}
+	err = s.Store.CreateTicket(ctx, &v)
 	if err == nil {
 		s.Metrics.TicketOpened(v.Priority)
 	}
@@ -419,14 +458,16 @@ func (s *Service) Comments(ctx context.Context, u store.User, id int64, page, si
 	return v, Normalize(err)
 }
 
-func (s *Service) MutateComment(ctx context.Context, u store.User, ticket, id int64, body string, remove bool) (store.Comment, error) {
-	var result store.Comment
-	var err error
+func (s *Service) MutateComment(ctx context.Context, u store.User, ticket, id int64, body string, remove bool) (result store.Comment, err error) {
 	if !remove {
 		body, err = text(body, 5000, true)
 		if err != nil {
 			return result, err
 		}
+	}
+
+	if id == 0 && !remove {
+		defer func() { businessAttempt(err, func() { s.Metrics.CommentAddAttempt(u.Role) }) }()
 	}
 
 	err = s.Store.MutateTicket(ctx, u, ticket, func(ctx context.Context, tx bun.Tx, v *store.Ticket) error {
@@ -435,6 +476,9 @@ func (s *Service) MutateComment(ctx context.Context, u store.User, ticket, id in
 		}
 
 		if id == 0 {
+			if err := s.Faults.Apply(ctx); err != nil {
+				return err
+			}
 			result = store.Comment{TicketID: ticket, AuthorID: u.ID, Body: body}
 			return store.InsertComment(ctx, tx, &result)
 		}

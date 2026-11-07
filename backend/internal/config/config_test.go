@@ -35,3 +35,29 @@ func TestConfiguration(t *testing.T) {
 		t.Fatal("missing database URL accepted")
 	}
 }
+
+func TestLabFaultConfiguration(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://localhost/support")
+	t.Setenv("LAB_FAULT_RATE", "0.2")
+	t.Setenv("LAB_FAULT_DELAY", "1.5s")
+	c, err := Load()
+	if err != nil || c.LabFaultRate != 0.2 || c.LabFaultDelay.Milliseconds() != 1500 {
+		t.Fatalf("fault config: %+v %v", c, err)
+	}
+	for _, value := range []string{"-0.1", "1.1", "NaN", "Inf", "bad"} {
+		t.Run("rate-"+value, func(t *testing.T) {
+			t.Setenv("LAB_FAULT_RATE", value)
+			if _, err := Load(); err == nil {
+				t.Fatalf("accepted rate %s", value)
+			}
+		})
+	}
+	for _, value := range []string{"-1s", "bad"} {
+		t.Run("delay-"+value, func(t *testing.T) {
+			t.Setenv("LAB_FAULT_DELAY", value)
+			if _, err := Load(); err == nil {
+				t.Fatalf("accepted delay %s", value)
+			}
+		})
+	}
+}

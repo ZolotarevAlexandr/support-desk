@@ -186,3 +186,9 @@ frontend/test-results/
 frontend/playwright-report/
 *.tar.gz
 bin/
+
+# Python lab tooling
+__pycache__/
+*.pyc
+# Manually recorded lab screencast
+docs/slo/screencast.mp4

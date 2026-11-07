@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"fmt"
+	"sre_tbank/internal/store"
 	"testing"
 	"time"
 
@@ -80,4 +81,44 @@ func TestBusinessMetrics(t *testing.T) {
 	h.count("support_comments_added_total", "author_role", "operator", 1)
 	h.count("support_comments_added_total", "author_role", "user", 1)
 	h.request("GET", "/metrics", "", nil, 404)
+}
+
+func TestSLOAttemptsFaultsAndRollback(t *testing.T) {
+	h := setup(t)
+	_, ut := h.register("slo-user", "user")
+	_, ot := h.register("slo-operator", "operator")
+	ticket := h.ticket(ut, "SLO fixture")
+	path := fmt.Sprintf("/api/v1/tickets/%d", ticket.ID)
+	h.count("support_ticket_open_attempts_total", "priority", "medium", 1)
+	h.request("POST", "/api/v1/tickets", ut, map[string]any{}, 400)
+	h.count("support_ticket_open_attempts_total", "priority", "medium", 1)
+	h.action(ut, ticket.ID, map[string]any{"action": "claim"}, 403)
+	h.count("support_ticket_action_attempts_total", "action", "claim", 0)
+
+	h.a.Service.Faults.Rate = 1
+	h.request("POST", "/api/v1/tickets", ut, map[string]any{
+		"title": "Injected failure", "description": "Valid request", "category_id": 1}, 503)
+	h.request("POST", path+"/comments", ut, map[string]any{"body": "Injected failure"}, 503)
+	h.action(ot, ticket.ID, map[string]any{"action": "claim"}, 503)
+	h.count("support_ticket_open_attempts_total", "priority", "medium", 2)
+	h.count("support_tickets_opened_total", "priority", "medium", 1)
+	h.count("support_comment_add_attempts_total", "author_role", "user", 1)
+	h.count("support_comments_added_total", "author_role", "user", 0)
+	h.count("support_ticket_action_attempts_total", "action", "claim", 1)
+	h.count("support_ticket_actions_total", "action", "claim", 0)
+	h.request("GET", "/healthz", "", nil, 200)
+	h.request("GET", "/readyz", "", nil, 200)
+	current := decode[store.Ticket](t, h.request("GET", path, ut, nil, 200))
+	if current.Status != "open" || current.AssigneeID != nil {
+		t.Fatalf("injected claim committed: %+v", current)
+	}
+
+	h.a.Service.Faults.Rate = 0
+	h.action(ot, ticket.ID, map[string]any{"action": "claim"}, 200)
+	h.action(ot, ticket.ID, map[string]any{"action": "claim"}, 409)
+	h.request("POST", path+"/comments", ut, map[string]any{"body": "Recovered"}, 201)
+	h.count("support_ticket_action_attempts_total", "action", "claim", 2)
+	h.count("support_ticket_actions_total", "action", "claim", 1)
+	h.count("support_comment_add_attempts_total", "author_role", "user", 2)
+	h.count("support_comments_added_total", "author_role", "user", 1)
 }

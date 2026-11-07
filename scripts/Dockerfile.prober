@@ -1,0 +1,6 @@
+FROM python:3.14-alpine
+WORKDIR /app
+COPY scripts/slo-prober.py /app/prober.py
+USER 65532:65532
+EXPOSE 9115
+ENTRYPOINT ["python3", "-u", "/app/prober.py"]

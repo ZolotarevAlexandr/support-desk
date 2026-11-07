@@ -1,0 +1,15 @@
+[
+  {
+    "phase": "01-healthy",
+    "timestamp": "2026-10-29T21:47:16.169Z",
+    "indicators": {
+      "ticket": 1,
+      "comment": 1,
+      "action": 1,
+      "latency": 0.0475,
+      "good": 1,
+      "sla": 26.666666666666668,
+      "coverage": 57.49999999999999
+    }
+  }
+]

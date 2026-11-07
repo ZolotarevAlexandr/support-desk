@@ -21,7 +21,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: migrate
-          image: support-desk:metrics-v1
+          image: support-desk:slo-v1
           imagePullPolicy: IfNotPresent
           args: ["migrate"]
           envFrom:
