@@ -1,0 +1,28 @@
+groups:
+  - name: support-runtime
+    interval: 15s
+    rules:
+      - alert: SupportGoGoroutinesHigh
+        expr: go_goroutines{job="support-desk",namespace="support-desk"} > 100
+        for: 2m
+        labels:
+          severity: warning
+          service: support-desk
+          environment: minikube
+          profile: normal
+        annotations:
+          summary: "Более 100 goroutine в экземпляре Support Desk"
+          description: 'Pod {{ $labels.pod }}: {{ $value }} goroutine; порог 100, удержание 2 минуты. Рост может означать накопление запросов или утечку goroutine.'
+          runbook: "Сравните число goroutine с нагрузкой и временем ответа сервиса. Проверьте таймауты запросов и ожидание соединений с PostgreSQL."
+      - alert: SupportProcessMemoryHigh
+        expr: process_resident_memory_bytes{job="support-desk",namespace="support-desk"} > 209715200
+        for: 2m
+        labels:
+          severity: warning
+          service: support-desk
+          environment: minikube
+          profile: normal
+        annotations:
+          summary: "RSS процесса Support Desk превышает 200 MiB"
+          description: 'Pod {{ $labels.pod }}: RSS {{ $value | humanize1024 }}B; порог 200 MiB, удержание 2 минуты, лимит контейнера 256 MiB.'
+          runbook: "Проверьте потребление памяти и рестарты указанного Pod, включая OOMKilled. Сопоставьте рост RSS с нагрузкой и последним развёртыванием."

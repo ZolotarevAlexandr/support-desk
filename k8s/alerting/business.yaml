@@ -1,0 +1,40 @@
+groups:
+  - name: support-business
+    interval: 15s
+    rules:
+      - alert: SupportTicketCreationFailures
+        expr: |
+          (
+            sum(increase(support_tickets_opened_total{job="support-desk",namespace="support-desk"}[5m]))
+              / sum(increase(support_ticket_open_attempts_total{job="support-desk",namespace="support-desk"}[5m]))
+          ) < 0.99
+          and
+          sum(increase(support_ticket_open_attempts_total{job="support-desk",namespace="support-desk"}[5m])) >= 20
+        for: 2m
+        labels:
+          severity: critical
+          service: support-desk
+          environment: minikube
+          profile: normal
+        annotations:
+          summary: "Ошибки создания обращений превышают 1%"
+          description: 'Доля успеха {{ $value | humanizePercentage }} за 5 минут при не менее 20 допустимых попытках; цель 99% (ошибки более 1%), удержание 2 минуты.'
+          runbook: "Проверьте ответы 5xx при создании обращений в логах support-app. Проверьте доступность PostgreSQL и ошибки записи в его логах. Сопоставьте начало сбоев с последним развёртыванием."
+      - alert: SupportCommentCreationFailures
+        expr: |
+          (
+            sum(increase(support_comments_added_total{job="support-desk",namespace="support-desk"}[5m]))
+              / sum(increase(support_comment_add_attempts_total{job="support-desk",namespace="support-desk"}[5m]))
+          ) < 0.99
+          and
+          sum(increase(support_comment_add_attempts_total{job="support-desk",namespace="support-desk"}[5m])) >= 20
+        for: 2m
+        labels:
+          severity: critical
+          service: support-desk
+          environment: minikube
+          profile: normal
+        annotations:
+          summary: "Ошибки добавления комментариев превышают 1%"
+          description: 'Доля успеха {{ $value | humanizePercentage }} за 5 минут при не менее 20 допустимых попытках; цель 99% (ошибки более 1%), удержание 2 минуты.'
+          runbook: "Проверьте ошибки добавления комментариев в логах support-app. Проверьте блокировки и длительные транзакции в PostgreSQL."

@@ -39,6 +39,14 @@ For the metrics lab, see [k8s/monitoring/README.md](k8s/monitoring/README.md).
 
 For the SLI/SLO/SLA lab and Grafana demonstration, see [k8s/slo/README.md](k8s/slo/README.md).
 
+For the alerting lab, vmalert, Alertmanager and Telegram demonstration, see
+[k8s/alerting/README.md](k8s/alerting/README.md) and the
+[alerting report](docs/reports/report_week_6_alerts.md).
+
+Run `python3 scripts/package.py` to create `artifacts/support-desk.tar.gz` from the current project files,
+including uncommitted source, manifests, reports and screenshots. The archive excludes `.env`, local settings,
+and generated artifacts. Use `--output path/to/archive.tar.gz` to choose another destination.
+
 Install Go 1.27+, Node 24+, and PostgreSQL 18 (or start only `db` through Compose). The database URL must point to a
 real database; there is no in-memory alternative.
 

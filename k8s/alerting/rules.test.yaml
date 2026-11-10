@@ -1,0 +1,90 @@
+# Focused PromQL checks; synthetic series are not notification evidence.
+rule_files:
+- business.yaml
+- runtime-normal.yaml
+evaluation_interval: 15s
+tests:
+- name: All four alerts wait for two minutes, fire, then recover
+  interval: 15s
+  input_series:
+  - series: support_ticket_open_attempts_total{job="support-desk",namespace="support-desk",pod="a"}
+    values: 0+10x60
+  - series: support_tickets_opened_total{job="support-desk",namespace="support-desk",pod="a"}
+    values: 0+9x20 190+10x39
+  - series: support_comment_add_attempts_total{job="support-desk",namespace="support-desk",pod="a"}
+    values: 0+10x60
+  - series: support_comments_added_total{job="support-desk",namespace="support-desk",pod="a"}
+    values: 0+9x20 190+10x39
+  - series: go_goroutines{job="support-desk",namespace="support-desk",pod="a"}
+    values: 110+0x20 30+0x40
+  - series: process_resident_memory_bytes{job="support-desk",namespace="support-desk",pod="a"}
+    values: 220000000+0x20 50000000+0x40
+  promql_expr_test:
+  - expr: ALERTS{alertstate="firing"}
+    eval_time: 1m45s
+    exp_samples: []
+  - expr: ALERTS{alertstate="firing"}
+    eval_time: 2m30s
+    exp_samples:
+    - labels: ALERTS{alertname="SupportTicketCreationFailures",alertstate="firing",environment="minikube",profile="normal",service="support-desk",severity="critical"}
+      value: 1
+    - labels: ALERTS{alertname="SupportCommentCreationFailures",alertstate="firing",environment="minikube",profile="normal",service="support-desk",severity="critical"}
+      value: 1
+    - labels: ALERTS{alertname="SupportGoGoroutinesHigh",alertstate="firing",environment="minikube",profile="normal",service="support-desk",severity="warning",job="support-desk",namespace="support-desk",pod="a"}
+      value: 1
+    - labels: ALERTS{alertname="SupportProcessMemoryHigh",alertstate="firing",environment="minikube",profile="normal",service="support-desk",severity="warning",job="support-desk",namespace="support-desk",pod="a"}
+      value: 1
+  - expr: ALERTS{alertstate="firing"}
+    eval_time: 11m
+    exp_samples: []
+- name: Exactly 99 percent success and exact runtime thresholds do not fire
+  interval: 15s
+  input_series:
+  - series: support_ticket_open_attempts_total{job="support-desk",namespace="support-desk",pod="a"}
+    values: 0+100x40
+  - series: support_tickets_opened_total{job="support-desk",namespace="support-desk",pod="a"}
+    values: 0+99x40
+  - series: support_comment_add_attempts_total{job="support-desk",namespace="support-desk",pod="a"}
+    values: 0+100x40
+  - series: support_comments_added_total{job="support-desk",namespace="support-desk",pod="a"}
+    values: 0+99x40
+  - series: go_goroutines{job="support-desk",namespace="support-desk",pod="a"}
+    values: 100+0x40
+  - series: process_resident_memory_bytes{job="support-desk",namespace="support-desk",pod="a"}
+    values: 209715200+0x40
+  promql_expr_test:
+  - expr: ALERTS{alertstate="firing"}
+    eval_time: 5m
+    exp_samples: []
+- name: Insufficient business traffic and absent runtime metrics do not fire
+  interval: 15s
+  input_series:
+  - series: support_ticket_open_attempts_total{job="support-desk",namespace="support-desk",pod="a"}
+    values: 0+0.5x40
+  - series: support_tickets_opened_total{job="support-desk",namespace="support-desk",pod="a"}
+    values: 0+0x40
+  - series: support_comment_add_attempts_total{job="support-desk",namespace="support-desk",pod="a"}
+    values: 0+0.5x40
+  - series: support_comments_added_total{job="support-desk",namespace="support-desk",pod="a"}
+    values: 0+0x40
+  promql_expr_test:
+  - expr: ALERTS{alertstate="firing"}
+    eval_time: 5m
+    exp_samples: []
+- name: Replica aggregation handles a counter reset
+  interval: 15s
+  input_series:
+  - series: support_ticket_open_attempts_total{job="support-desk",namespace="support-desk",pod="a"}
+    values: 0+100x19 0+100x20
+  - series: support_tickets_opened_total{job="support-desk",namespace="support-desk",pod="a"}
+    values: 0+100x19 0+100x20
+  - series: support_ticket_open_attempts_total{job="support-desk",namespace="support-desk",pod="b"}
+    values: 0+10x40
+  - series: support_tickets_opened_total{job="support-desk",namespace="support-desk",pod="b"}
+    values: 0+0x40
+  promql_expr_test:
+  - expr: ALERTS{alertstate="firing"}
+    eval_time: 8m
+    exp_samples:
+    - labels: ALERTS{alertname="SupportTicketCreationFailures",alertstate="firing",environment="minikube",profile="normal",service="support-desk",severity="critical"}
+      value: 1
