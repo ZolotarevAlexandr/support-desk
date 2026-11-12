@@ -32,6 +32,8 @@ kubectl --context=minikube -n support-desk wait --for=condition=complete job/sup
 
 # Start the application only after both Jobs succeed.
 kubectl --context=minikube apply -f k8s/app.yaml
+# The local dev tag is reused; recreate Pods to run the image just loaded.
+kubectl --context=minikube -n support-desk rollout restart deployment/support-app
 kubectl --context=minikube -n support-desk rollout status deployment/support-app --timeout=180s
 kubectl --context=minikube apply -f k8s/slo/prober.yaml
 kubectl --context=minikube -n support-desk rollout status deployment/support-prober --timeout=180s

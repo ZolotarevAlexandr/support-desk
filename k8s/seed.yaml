@@ -21,7 +21,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: seed
-          image: support-desk:slo-v1
+          image: support-desk:dev
           imagePullPolicy: IfNotPresent
           args: ["seed"]
           envFrom:

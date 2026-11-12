@@ -3,7 +3,7 @@
 For the logging assignment, continue with [logging/README.md](logging/README.md).
 For the metrics assignment, continue with [monitoring/README.md](monitoring/README.md).
 The earlier Kubernetes report is preserved at
-[docs/kubernetes/Отчёт.md](../docs/reports/report_week_2_k8s_deployment.md).
+[report_week_2_k8s_deployment.md](../docs/reports/report_week_2_k8s_deployment.md).
 
 Run these commands from the repository root. All manifests explicitly use the
 `support-desk` namespace, so the namespace selected during practice does not matter.
@@ -21,9 +21,13 @@ Run these commands from the repository root. All manifests explicitly use the
 | `app.yaml` | Application Service and scalable Deployment |
 
 The existing Dockerfile embeds the React UI into the Go server. The application,
-migration Job, and seed Job all use `support-desk:slo-v1`. PostgreSQL uses the same
+migration Job, and seed Job all use `support-desk:dev`. PostgreSQL uses the same
 pinned image as Docker Compose. PostgreSQL uses `Recreate` to avoid overlapping
 database Pods sharing the data directory. Scale only `support-app`.
+
+`dev` is the shared local development tag. After rebuilding, load it into
+Minikube and rerun `deploy.sh`; the script restarts application Pods to use the
+updated image even when the tag stays the same.
 
 The PVC uses the cluster's default StorageClass. Standard Minikube provides a
 default class; verify it with `kubectl --context=minikube get storageclass`.
@@ -45,10 +49,10 @@ For the assignment's `docker-env` workflow, use the Docker container runtime:
 minikube start --driver=docker --container-runtime=docker --cpus=2 --memory=4096
 kubectl config use-context minikube
 eval "$(minikube docker-env)"
-docker build --build-arg VERSION=slo-v1 -t support-desk:slo-v1 .
+docker build --build-arg VERSION=dev -t support-desk:dev .
 docker build -f scripts/Dockerfile.prober -t support-prober:slo-v1 .
 docker pull quay.io/prometheuscommunity/postgres-exporter:v0.20.1
-minikube image load support-desk:slo-v1 support-prober:slo-v1 quay.io/prometheuscommunity/postgres-exporter:v0.20.1
+minikube image load support-desk:dev support-prober:slo-v1 quay.io/prometheuscommunity/postgres-exporter:v0.20.1
 minikube image ls
 ```
 
@@ -58,7 +62,7 @@ Restore the host Docker environment afterward with
 `eval "$(minikube docker-env -u)"`.
 
 If your existing Minikube uses containerd, build with the host Docker daemon
-instead and load the image with `minikube image load support-desk:slo-v1`.
+instead and load the image with `minikube image load support-desk:dev`.
 
 The PostgreSQL Pod now also runs the pinned PostgreSQL exporter on port 9187;
 its image must be available to Minikube. Application Pods expose metrics on

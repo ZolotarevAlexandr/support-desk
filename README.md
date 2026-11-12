@@ -43,6 +43,10 @@ For the alerting lab, vmalert, Alertmanager and Telegram demonstration, see
 [k8s/alerting/README.md](k8s/alerting/README.md) and the
 [alerting report](docs/reports/report_week_6_alerts.md).
 
+For the Grafana application overview, prober SLA and imported PostgreSQL dashboard,
+see [k8s/grafana/README.md](k8s/grafana/README.md) and the
+[Grafana report](docs/reports/report_week_7_grafana.md).
+
 Run `python3 scripts/package.py` to create `artifacts/support-desk.tar.gz` from the current project files,
 including uncommitted source, manifests, reports and screenshots. The archive excludes `.env`, local settings,
 and generated artifacts. Use `--output path/to/archive.tar.gz` to choose another destination.
@@ -94,8 +98,8 @@ maximum. The server stores only SHA-256 hashes of random 256-bit session tokens.
 Go cross-origin protection rejects unsafe cross-origin requests including login and registration. Roles are fixed at
 registration. The invite code is never sent to the frontend as configuration or stored in the database.
 
-Only `serve` starts the metrics listener. It exports Go/process collectors and five business metric families through the
-Prometheus Go client, with OpenMetrics negotiation. Compose does not publish this port; the Kubernetes Service also
+Only `serve` starts the metrics listener. It exports Go/process collectors, business metrics, and HTTP request counts,
+duration and concurrency through the Prometheus Go client, with OpenMetrics negotiation. Compose does not publish this port; the Kubernetes Service also
 exposes only the application port. Kubernetes monitoring discovers and scrapes each annotated Pod directly. Metrics are
 process-local and reset on restart; their historical samples live in VictoriaMetrics. See
 the [metrics report](docs/reports/report_week_4_metrics.md) for definitions and queries.

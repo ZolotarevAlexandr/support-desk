@@ -34,7 +34,7 @@ func (a *API) Handler() http.Handler {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	_ = r.SetTrustedProxies(nil)
-	r.Use(a.middleware(), a.recovery())
+	r.Use(a.middleware(), a.httpMetrics(), a.recovery())
 
 	// Metrics are served exclusively by the internal monitoring listener.
 	r.Any("/metrics", func(c *gin.Context) { c.Status(http.StatusNotFound) })

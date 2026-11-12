@@ -30,7 +30,7 @@ def request(method, path, data=None, expected=200, authenticated=True):
         if path == '/debug/error' and response.code != 500:
             raise RuntimeError(
                 f'/debug/error returned HTTP {response.code} instead of 500. '
-                'Rebuild and load support-desk:logs-v2, deploy the updated image, '
+                'Rebuild and load support-desk:dev, deploy the updated image, '
                 'and reconnect the application port-forward.'
             )
         assert response.code in expected_statuses, (method, path, response.code, body.decode())

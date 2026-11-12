@@ -46,12 +46,12 @@ with `eval "$(minikube docker-env -u)"` first.
 ```sh
 minikube start --profile=minikube
 kubectl --context=minikube get nodes,storageclass
-docker build --build-arg VERSION=slo-v1 -t support-desk:slo-v1 .
+docker build --build-arg VERSION=dev -t support-desk:dev .
 docker build -f scripts/Dockerfile.prober -t support-prober:slo-v1 .
 docker pull victoriametrics/victoria-metrics:v1.154.0
 docker pull quay.io/prometheuscommunity/postgres-exporter:v0.20.1
 docker pull postgres:18.0-alpine3.22@sha256:48c8ad3a7284b82be4482a52076d47d879fd6fb084a1cbfccbd551f9331b0e40
-minikube image load support-desk:slo-v1 support-prober:slo-v1 victoriametrics/victoria-metrics:v1.154.0 quay.io/prometheuscommunity/postgres-exporter:v0.20.1 postgres:18.0-alpine3.22@sha256:48c8ad3a7284b82be4482a52076d47d879fd6fb084a1cbfccbd551f9331b0e40
+minikube image load support-desk:dev support-prober:slo-v1 victoriametrics/victoria-metrics:v1.154.0 quay.io/prometheuscommunity/postgres-exporter:v0.20.1 postgres:18.0-alpine3.22@sha256:48c8ad3a7284b82be4482a52076d47d879fd6fb084a1cbfccbd551f9331b0e40
 ./k8s/deploy.sh
 ./k8s/monitoring/deploy.sh
 ```

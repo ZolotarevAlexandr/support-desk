@@ -10,12 +10,12 @@ Requires Docker, Minikube, and kubectl. Reuse the existing profile and its data:
 ```sh
 minikube start --profile=minikube
 kubectl --context=minikube get nodes,storageclass
-docker build --build-arg VERSION=logs-v2 -t support-desk:logs-v2 .
+docker build --build-arg VERSION=dev -t support-desk:dev .
 docker pull victoriametrics/victoria-logs:v1.52.0
 docker pull timberio/vector:0.51.1-debian
 docker pull grafana/grafana:12.2.0
 docker pull postgres:18.0-alpine3.22@sha256:48c8ad3a7284b82be4482a52076d47d879fd6fb084a1cbfccbd551f9331b0e40
-minikube image load support-desk:logs-v2 victoriametrics/victoria-logs:v1.52.0 timberio/vector:0.51.1-debian grafana/grafana:12.2.0 postgres:18.0-alpine3.22@sha256:48c8ad3a7284b82be4482a52076d47d879fd6fb084a1cbfccbd551f9331b0e40
+minikube image load support-desk:dev victoriametrics/victoria-logs:v1.52.0 timberio/vector:0.51.1-debian grafana/grafana:12.2.0 postgres:18.0-alpine3.22@sha256:48c8ad3a7284b82be4482a52076d47d879fd6fb084a1cbfccbd551f9331b0e40
 ```
 
 Use the host Docker daemon for these commands. If your shell previously used
@@ -92,13 +92,14 @@ The script first checks `/debug/error` once before creating demo data, so 30
 rounds produce 31 intentional ERROR events. If the endpoint returns the frontend
 HTML instead of HTTP 500, the script stops with an image-update instruction.
 
-The image tag `logs-v2` includes `/debug/error`. When updating an already running
-cluster, load the new image and switch the Deployment explicitly:
+The application image includes `/debug/error`. When updating an already running
+cluster, load the new image and restart the Deployment to refresh the reused dev tag:
 
 ```sh
-docker build --build-arg VERSION=logs-v2 -t support-desk:logs-v2 .
-minikube image load support-desk:logs-v2
-kubectl --context=minikube -n support-desk set image deployment/support-app app=support-desk:logs-v2
+docker build --build-arg VERSION=dev -t support-desk:dev .
+minikube image load support-desk:dev
+kubectl --context=minikube -n support-desk set image deployment/support-app app=support-desk:dev
+kubectl --context=minikube -n support-desk rollout restart deployment/support-app
 kubectl --context=minikube -n support-desk rollout status deployment/support-app --timeout=180s
 ```
 
@@ -221,4 +222,4 @@ The result is `artifacts/support-desk-logs.tar.gz`, with root `report_week_2_k8s
 screenshots, manifests/configuration, current source, and reproduction scripts.
 The archive excludes `.env` files, local credentials, dependencies, compiled
 assets, assignment materials, and the previous recording. The earlier report is
-preserved at [docs/kubernetes/Отчёт.md](../../docs/reports/report_week_2_k8s_deployment.md).
+preserved at [report_week_2_k8s_deployment.md](../../docs/reports/report_week_2_k8s_deployment.md).

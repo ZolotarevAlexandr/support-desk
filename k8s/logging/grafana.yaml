@@ -107,7 +107,13 @@ spec:
           mountPath: /var/lib/grafana/dashboards/support-slo.json
           subPath: support-slo.json
           readOnly: true
+        - name: app-dashboards
+          mountPath: /var/lib/grafana/dashboards/application
+          readOnly: true
       volumes:
+      - name: app-dashboards
+        configMap:
+          name: grafana-app-dashboards
       - name: slo-dashboard
         configMap:
           name: grafana-slo-dashboard

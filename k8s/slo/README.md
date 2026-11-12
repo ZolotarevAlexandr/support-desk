@@ -5,9 +5,9 @@
 ```sh
 minikube start --profile=minikube
 # Use the host Docker daemon, not minikube docker-env.
-docker build --build-arg VERSION=slo-v1 -t support-desk:slo-v1 .
+docker build --build-arg VERSION=dev -t support-desk:dev .
 docker build -f scripts/Dockerfile.prober -t support-prober:slo-v1 .
-minikube image load support-desk:slo-v1 support-prober:slo-v1
+minikube image load support-desk:dev support-prober:slo-v1
 ./k8s/slo/deploy.sh
 ```
 

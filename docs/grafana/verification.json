@@ -1,0 +1,744 @@
+{
+  "checked_at": "2026-11-12T21:25:40.114376+00:00",
+  "datasource_uid": "victoriametrics",
+  "queries": [
+    {
+      "dashboard": "dashboard",
+      "panel": "Application scrape targets",
+      "refId": "A",
+      "series": 1,
+      "finite_series": 1,
+      "values": [
+        "1"
+      ],
+      "expr": "sum(up{job=\"support-desk\",namespace=\"support-desk\",pod=~\".*\"})"
+    },
+    {
+      "dashboard": "dashboard",
+      "panel": "Application scrape targets",
+      "refId": "B",
+      "series": 1,
+      "finite_series": 1,
+      "values": [
+        "1"
+      ],
+      "expr": "count(up{job=\"support-desk\",namespace=\"support-desk\",pod=~\".*\"})"
+    },
+    {
+      "dashboard": "dashboard",
+      "panel": "PostgreSQL health",
+      "refId": "A",
+      "series": 1,
+      "finite_series": 1,
+      "values": [
+        "1"
+      ],
+      "expr": "min(pg_up{job=\"postgres\",namespace=\"support-desk\"})"
+    },
+    {
+      "dashboard": "dashboard",
+      "panel": "HTTP request rate",
+      "refId": "A",
+      "series": 1,
+      "finite_series": 1,
+      "values": [
+        "1.511111111111111"
+      ],
+      "expr": "sum(rate(support_http_requests_total{job=\"support-desk\",namespace=\"support-desk\",pod=~\".*\"}[1m]))"
+    },
+    {
+      "dashboard": "dashboard",
+      "panel": "HTTP server errors",
+      "refId": "A",
+      "series": 1,
+      "finite_series": 1,
+      "values": [
+        "0"
+      ],
+      "expr": "(100 * ((sum(rate(support_http_requests_total{job=\"support-desk\",namespace=\"support-desk\",pod=~\".*\",status=~\"5..\"}[1m]))) or (0 * (sum(rate(support_http_requests_total{job=\"support-desk\",namespace=\"support-desk\",pod=~\".*\"}[1m]))))) / (sum(rate(support_http_requests_total{job=\"support-desk\",namespace=\"support-desk\",pod=~\".*\"}[1m])))) and on() ((sum(rate(support_http_requests_total{job=\"support-desk\",namespace=\"support-desk\",pod=~\".*\"}[1m]))) > 0)"
+    },
+    {
+      "dashboard": "dashboard",
+      "panel": "HTTP request rate by response status",
+      "refId": "A",
+      "series": 6,
+      "finite_series": 6,
+      "values": [
+        "0.8888888888888888",
+        "0.4444444444444444",
+        "0.17777777777777778",
+        "0",
+        "0",
+        "0"
+      ],
+      "expr": "sum by (status) (rate(support_http_requests_total{job=\"support-desk\",namespace=\"support-desk\",pod=~\".*\"}[1m]))"
+    },
+    {
+      "dashboard": "dashboard",
+      "panel": "HTTP handler p95",
+      "refId": "A",
+      "series": 1,
+      "finite_series": 1,
+      "values": [
+        "0.0069999999999999975"
+      ],
+      "expr": "histogram_quantile(0.95, sum by (le) (rate(support_http_request_duration_seconds_bucket{job=\"support-desk\",namespace=\"support-desk\",pod=~\".*\"}[1m])))"
+    },
+    {
+      "dashboard": "dashboard",
+      "panel": "Combined SLA · rolling 30m",
+      "refId": "A",
+      "series": 1,
+      "finite_series": 1,
+      "values": [
+        "6.666666666666667"
+      ],
+      "expr": "100 * avg_over_time(((((((sum(increase(support_tickets_opened_total{job=\"support-desk\"}[5m])) / sum(increase(support_ticket_open_attempts_total{job=\"support-desk\"}[5m]))) and (sum(increase(support_ticket_open_attempts_total{job=\"support-desk\"}[5m])) > 0)) or vector(0)) >= bool 0.99) * ((((sum(increase(support_comments_added_total{job=\"support-desk\"}[5m])) / sum(increase(support_comment_add_attempts_total{job=\"support-desk\"}[5m]))) and (sum(increase(support_comment_add_attempts_total{job=\"support-desk\"}[5m])) > 0)) or vector(0)) >= bool 0.99) * ((((sum(increase(support_ticket_actions_total{job=\"support-desk\"}[5m])) / sum(increase(support_ticket_action_attempts_total{job=\"support-desk\"}[5m]))) and (sum(increase(support_ticket_action_attempts_total{job=\"support-desk\"}[5m])) > 0)) or vector(0)) >= bool 0.99) * ((histogram_quantile(0.95, sum by (le) (rate(support_probe_duration_seconds_bucket{job=\"slo-prober\"}[5m])))) < bool 1) * (max(up{job=\"slo-prober\"}) == bool 1) * (max(up{job=\"support-desk\"}) == bool 1) * ((time() - max(support_probe_last_round_timestamp_seconds{job=\"slo-prober\"})) < bool 45) * (min(support_probe_success{job=\"slo-prober\"}) == bool 1) * (count(support_probe_success{job=\"slo-prober\"}) == bool 3)) or vector(0))[30m:15s])"
+    },
+    {
+      "dashboard": "dashboard",
+      "panel": "SLA window coverage",
+      "refId": "A",
+      "series": 1,
+      "finite_series": 1,
+      "values": [
+        "16.666666666666664"
+      ],
+      "expr": "100 * clamp_max(((count_over_time((max(up{job=\"slo-prober\"}) == 1)[30m:15s])) or vector(0)) / 120, 1)"
+    },
+    {
+      "dashboard": "dashboard",
+      "panel": "Latest synthetic operations",
+      "refId": "A",
+      "series": 3,
+      "finite_series": 3,
+      "values": [
+        "1",
+        "1",
+        "1"
+      ],
+      "expr": "support_probe_success{job=\"slo-prober\",namespace=\"support-desk\"} and on() ((time() - max(support_probe_last_round_timestamp_seconds{job=\"slo-prober\",namespace=\"support-desk\"})) < 45)"
+    },
+    {
+      "dashboard": "dashboard",
+      "panel": "Synthetic request p95 · rolling 5m",
+      "refId": "A",
+      "series": 1,
+      "finite_series": 1,
+      "values": [
+        "0.0475"
+      ],
+      "expr": "histogram_quantile(0.95, sum by (le) (rate(support_probe_duration_seconds_bucket{job=\"slo-prober\"}[5m])))"
+    },
+    {
+      "dashboard": "dashboard",
+      "panel": "Process CPU",
+      "refId": "A",
+      "series": 1,
+      "finite_series": 1,
+      "values": [
+        "0.024"
+      ],
+      "expr": "rate(process_cpu_seconds_total{job=\"support-desk\",namespace=\"support-desk\",pod=~\".*\"}[1m])"
+    },
+    {
+      "dashboard": "dashboard",
+      "panel": "Process RSS and Go heap",
+      "refId": "A",
+      "series": 1,
+      "finite_series": 1,
+      "values": [
+        "19005440"
+      ],
+      "expr": "process_resident_memory_bytes{job=\"support-desk\",namespace=\"support-desk\",pod=~\".*\"}"
+    },
+    {
+      "dashboard": "dashboard",
+      "panel": "Process RSS and Go heap",
+      "refId": "B",
+      "series": 1,
+      "finite_series": 1,
+      "values": [
+        "3386272"
+      ],
+      "expr": "go_memstats_heap_alloc_bytes{job=\"support-desk\",namespace=\"support-desk\",pod=~\".*\"}"
+    },
+    {
+      "dashboard": "dashboard",
+      "panel": "Goroutines and HTTP concurrency",
+      "refId": "A",
+      "series": 1,
+      "finite_series": 1,
+      "values": [
+        "12"
+      ],
+      "expr": "go_goroutines{job=\"support-desk\",namespace=\"support-desk\",pod=~\".*\"}"
+    },
+    {
+      "dashboard": "dashboard",
+      "panel": "Goroutines and HTTP concurrency",
+      "refId": "B",
+      "series": 1,
+      "finite_series": 1,
+      "values": [
+        "0"
+      ],
+      "expr": "support_http_requests_in_flight{job=\"support-desk\",namespace=\"support-desk\",pod=~\".*\"}"
+    },
+    {
+      "dashboard": "postgres-dashboard",
+      "panel": "Transactions/s",
+      "refId": "A",
+      "series": 1,
+      "finite_series": 1,
+      "values": [
+        "3.533333333333333"
+      ],
+      "expr": "sum(irate(pg_stat_database_xact_commit{datname=~\"support\",job=~\"postgres\",instance=~\".*\"}[1m])) + sum(irate(pg_stat_database_xact_rollback{datname=~\"support\",job=~\"postgres\",instance=~\".*\"}[1m]))"
+    },
+    {
+      "dashboard": "postgres-dashboard",
+      "panel": "Rows",
+      "refId": "A",
+      "series": 1,
+      "finite_series": 1,
+      "values": [
+        "115.4"
+      ],
+      "expr": "sum(irate(pg_stat_database_tup_fetched{datname=~\"support\",job=~\"postgres\",instance=~\".*\"}[1m]))"
+    },
+    {
+      "dashboard": "postgres-dashboard",
+      "panel": "Rows",
+      "refId": "B",
+      "series": 1,
+      "finite_series": 1,
+      "values": [
+        "403.26666666666665"
+      ],
+      "expr": "sum(irate(pg_stat_database_tup_returned{datname=~\"support\",job=~\"postgres\",instance=~\".*\"}[1m]))"
+    },
+    {
+      "dashboard": "postgres-dashboard",
+      "panel": "Rows",
+      "refId": "C",
+      "series": 1,
+      "finite_series": 1,
+      "values": [
+        "0.26666666666666666"
+      ],
+      "expr": "sum(irate(pg_stat_database_tup_inserted{datname=~\"support\",job=~\"postgres\",instance=~\".*\"}[1m]))"
+    },
+    {
+      "dashboard": "postgres-dashboard",
+      "panel": "Rows",
+      "refId": "D",
+      "series": 1,
+      "finite_series": 1,
+      "values": [
+        "0.13333333333333333"
+      ],
+      "expr": "sum(irate(pg_stat_database_tup_updated{datname=~\"support\",job=~\"postgres\",instance=~\".*\"}[1m]))"
+    },
+    {
+      "dashboard": "postgres-dashboard",
+      "panel": "Rows",
+      "refId": "E",
+      "series": 1,
+      "finite_series": 1,
+      "values": [
+        "0.26666666666666666"
+      ],
+      "expr": "sum(irate(pg_stat_database_tup_deleted{datname=~\"support\",job=~\"postgres\",instance=~\".*\"}[1m]))"
+    },
+    {
+      "dashboard": "postgres-dashboard",
+      "panel": "Buffers",
+      "refId": "A",
+      "series": 1,
+      "finite_series": 1,
+      "values": [
+        "0"
+      ],
+      "expr": "irate(pg_stat_bgwriter_buffers_alloc_total{job=~\"postgres\",instance=~\".*\"}[1m])"
+    },
+    {
+      "dashboard": "postgres-dashboard",
+      "panel": "Buffers",
+      "refId": "D",
+      "series": 1,
+      "finite_series": 1,
+      "values": [
+        "0"
+      ],
+      "expr": "irate(pg_stat_bgwriter_buffers_clean_total{job=~\"postgres\",instance=~\".*\"}[1m])"
+    },
+    {
+      "dashboard": "postgres-dashboard",
+      "panel": "Conflicts/Deadlocks",
+      "refId": "A",
+      "series": 1,
+      "finite_series": 1,
+      "values": [
+        "0"
+      ],
+      "expr": "sum(pg_stat_database_deadlocks{datname=~\"support\",job=~\"postgres\",instance=~\".*\"})"
+    },
+    {
+      "dashboard": "postgres-dashboard",
+      "panel": "Conflicts/Deadlocks",
+      "refId": "B",
+      "series": 1,
+      "finite_series": 1,
+      "values": [
+        "0"
+      ],
+      "expr": "sum(pg_stat_database_conflicts{datname=~\"support\",job=~\"postgres\",instance=~\".*\"})"
+    },
+    {
+      "dashboard": "postgres-dashboard",
+      "panel": "Cache hit ratio",
+      "refId": "A",
+      "series": 1,
+      "finite_series": 1,
+      "values": [
+        "99.956"
+      ],
+      "expr": "round(sum by (datname) (rate(pg_stat_database_blks_hit{datname=~\"support\",job=~\"postgres\",instance=~\".*\"}[1m])) / (sum by (datname)(rate(pg_stat_database_blks_hit{datname=~\"support\",job=~\"postgres\",instance=~\".*\"}[1m])) + sum by (datname)(rate(pg_stat_database_blks_read{datname=~\"support\",job=~\"postgres\",instance=~\".*\"}[1m])))*100,0.001)"
+    },
+    {
+      "dashboard": "postgres-dashboard",
+      "panel": "Database connections",
+      "refId": "A",
+      "series": 1,
+      "finite_series": 1,
+      "values": [
+        "4"
+      ],
+      "expr": "pg_stat_database_numbackends{datname=~\"support\",job=~\"postgres\",instance=~\".*\"}"
+    }
+  ],
+  "replica_check": {
+    "targets": [
+      {
+        "metric": {
+          "__name__": "up",
+          "container": "app",
+          "instance": "10.244.0.69:9090",
+          "job": "support-desk",
+          "namespace": "support-desk",
+          "pod": "support-app-674b547cf4-dfbd4"
+        },
+        "value": [
+          1794519063,
+          "1"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "up",
+          "container": "app",
+          "instance": "10.244.0.71:9090",
+          "job": "support-desk",
+          "namespace": "support-desk",
+          "pod": "support-app-674b547cf4-gmjp5"
+        },
+        "value": [
+          1794519063,
+          "1"
+        ]
+      }
+    ],
+    "per_pod_rps": [
+      {
+        "metric": {
+          "pod": "support-app-674b547cf4-dfbd4"
+        },
+        "value": [
+          1794519063,
+          "0.3"
+        ]
+      },
+      {
+        "metric": {
+          "pod": "support-app-674b547cf4-gmjp5"
+        },
+        "value": [
+          1794519063,
+          "0.17777777777777776"
+        ]
+      }
+    ],
+    "total_rps": [
+      {
+        "metric": {},
+        "value": [
+          1794519063,
+          "0.47777777777777775"
+        ]
+      }
+    ],
+    "in_flight": [
+      {
+        "metric": {
+          "__name__": "support_http_requests_in_flight",
+          "container": "app",
+          "instance": "10.244.0.69:9090",
+          "job": "support-desk",
+          "namespace": "support-desk",
+          "pod": "support-app-674b547cf4-dfbd4"
+        },
+        "value": [
+          1794519063,
+          "0"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "support_http_requests_in_flight",
+          "container": "app",
+          "instance": "10.244.0.71:9090",
+          "job": "support-desk",
+          "namespace": "support-desk",
+          "pod": "support-app-674b547cf4-gmjp5"
+        },
+        "value": [
+          1794519063,
+          "0"
+        ]
+      }
+    ]
+  },
+  "checks": {
+    "go_test_race_with_disposable_postgres": "passed",
+    "go_vet": "passed",
+    "prober_tests": "4 passed",
+    "docker_production_build": "passed",
+    "grafana_browser_errors": [],
+    "dashboards_survived_restart": [
+      "support-overview",
+      "support-postgres",
+      "support-slo",
+      "support-logs"
+    ],
+    "export_import_roundtrip": "passed",
+    "pod_filter": "passed",
+    "datasource_health": "OK",
+    "replicas_restored_to": 1,
+    "fault_settings_restored": {
+      "LAB_FAULT_RATE": "0",
+      "LAB_FAULT_DELAY": "0s"
+    },
+    "screencast": {
+      "path": "screencast.mp4",
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 3440,
+          "height": 1440
+        }
+      ],
+      "format": {
+        "duration": "15.683333",
+        "size": "6530631"
+      }
+    },
+    "deployment_image": "support-desk:dev"
+  },
+  "phases": [
+    {
+      "phase": "healthy",
+      "timestamp": 1794520582.0742166,
+      "utc": "2026-11-12T21:56:22.074218+00:00",
+      "indicators": {
+        "good": [
+          {
+            "labels": {},
+            "value": "1"
+          }
+        ],
+        "sla": [
+          {
+            "labels": {},
+            "value": "100"
+          }
+        ],
+        "coverage": [
+          {
+            "labels": {},
+            "value": "100"
+          }
+        ],
+        "latency": [
+          {
+            "labels": {},
+            "value": "0.0475"
+          }
+        ],
+        "ticket": [
+          {
+            "labels": {},
+            "value": "1"
+          }
+        ],
+        "comment": [
+          {
+            "labels": {},
+            "value": "1"
+          }
+        ],
+        "action": [
+          {
+            "labels": {},
+            "value": "1"
+          }
+        ],
+        "probes": [
+          {
+            "labels": {
+              "__name__": "support_probe_success",
+              "container": "prober",
+              "instance": "10.244.0.57:9115",
+              "job": "slo-prober",
+              "namespace": "support-desk",
+              "operation": "action",
+              "pod": "support-prober-555fff5cf4-2wr98"
+            },
+            "value": "1"
+          },
+          {
+            "labels": {
+              "__name__": "support_probe_success",
+              "container": "prober",
+              "instance": "10.244.0.57:9115",
+              "job": "slo-prober",
+              "namespace": "support-desk",
+              "operation": "comment",
+              "pod": "support-prober-555fff5cf4-2wr98"
+            },
+            "value": "1"
+          },
+          {
+            "labels": {
+              "__name__": "support_probe_success",
+              "container": "prober",
+              "instance": "10.244.0.57:9115",
+              "job": "slo-prober",
+              "namespace": "support-desk",
+              "operation": "ticket",
+              "pod": "support-prober-555fff5cf4-2wr98"
+            },
+            "value": "1"
+          }
+        ],
+        "http_5xx_rps": [],
+        "http_p95": [
+          {
+            "labels": {},
+            "value": "0.009375"
+          }
+        ]
+      }
+    },
+    {
+      "phase": "degraded",
+      "timestamp": 1794520830.8829052,
+      "utc": "2026-11-12T22:00:30.882907+00:00",
+      "indicators": {
+        "good": [
+          {
+            "labels": {},
+            "value": "0"
+          }
+        ],
+        "sla": [
+          {
+            "labels": {},
+            "value": "87.5"
+          }
+        ],
+        "coverage": [
+          {
+            "labels": {},
+            "value": "100"
+          }
+        ],
+        "latency": [
+          {
+            "labels": {},
+            "value": "1.8640000000000003"
+          }
+        ],
+        "ticket": [
+          {
+            "labels": {},
+            "value": "1"
+          }
+        ],
+        "comment": [
+          {
+            "labels": {},
+            "value": "0.9629629629629629"
+          }
+        ],
+        "action": [
+          {
+            "labels": {},
+            "value": "0.9629629629629629"
+          }
+        ],
+        "probes": [
+          {
+            "labels": {
+              "__name__": "support_probe_success",
+              "container": "prober",
+              "instance": "10.244.0.57:9115",
+              "job": "slo-prober",
+              "namespace": "support-desk",
+              "operation": "action",
+              "pod": "support-prober-555fff5cf4-2wr98"
+            },
+            "value": "1"
+          },
+          {
+            "labels": {
+              "__name__": "support_probe_success",
+              "container": "prober",
+              "instance": "10.244.0.57:9115",
+              "job": "slo-prober",
+              "namespace": "support-desk",
+              "operation": "comment",
+              "pod": "support-prober-555fff5cf4-2wr98"
+            },
+            "value": "0"
+          },
+          {
+            "labels": {
+              "__name__": "support_probe_success",
+              "container": "prober",
+              "instance": "10.244.0.57:9115",
+              "job": "slo-prober",
+              "namespace": "support-desk",
+              "operation": "ticket",
+              "pod": "support-prober-555fff5cf4-2wr98"
+            },
+            "value": "1"
+          }
+        ],
+        "http_5xx_rps": [
+          {
+            "labels": {},
+            "value": "0.9666666666666667"
+          }
+        ],
+        "http_p95": [
+          {
+            "labels": {},
+            "value": "2.109375"
+          }
+        ]
+      }
+    },
+    {
+      "phase": "recovered",
+      "timestamp": 1794520929.9744601,
+      "utc": "2026-11-12T22:02:09.974462+00:00",
+      "indicators": {
+        "good": [
+          {
+            "labels": {},
+            "value": "0"
+          }
+        ],
+        "sla": [
+          {
+            "labels": {},
+            "value": "82.5"
+          }
+        ],
+        "coverage": [
+          {
+            "labels": {},
+            "value": "100"
+          }
+        ],
+        "latency": [
+          {
+            "labels": {},
+            "value": "1.9102564102564106"
+          }
+        ],
+        "ticket": [
+          {
+            "labels": {},
+            "value": "0.96"
+          }
+        ],
+        "comment": [
+          {
+            "labels": {},
+            "value": "0.9615384615384616"
+          }
+        ],
+        "action": [
+          {
+            "labels": {},
+            "value": "0.9615384615384616"
+          }
+        ],
+        "probes": [
+          {
+            "labels": {
+              "__name__": "support_probe_success",
+              "container": "prober",
+              "instance": "10.244.0.57:9115",
+              "job": "slo-prober",
+              "namespace": "support-desk",
+              "operation": "action",
+              "pod": "support-prober-555fff5cf4-2wr98"
+            },
+            "value": "1"
+          },
+          {
+            "labels": {
+              "__name__": "support_probe_success",
+              "container": "prober",
+              "instance": "10.244.0.57:9115",
+              "job": "slo-prober",
+              "namespace": "support-desk",
+              "operation": "comment",
+              "pod": "support-prober-555fff5cf4-2wr98"
+            },
+            "value": "1"
+          },
+          {
+            "labels": {
+              "__name__": "support_probe_success",
+              "container": "prober",
+              "instance": "10.244.0.57:9115",
+              "job": "slo-prober",
+              "namespace": "support-desk",
+              "operation": "ticket",
+              "pod": "support-prober-555fff5cf4-2wr98"
+            },
+            "value": "1"
+          }
+        ],
+        "http_5xx_rps": [
+          {
+            "labels": {},
+            "value": "0"
+          }
+        ],
+        "http_p95": [
+          {
+            "labels": {},
+            "value": "2.25"
+          }
+        ]
+      }
+    }
+  ]
+}

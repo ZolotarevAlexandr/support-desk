@@ -23,8 +23,5 @@ kubectl --context=minikube apply -f vector-rbac.yaml -f vector-config.yaml -f ve
 kubectl --context=minikube -n logging rollout restart daemonset/vector
 kubectl --context=minikube -n logging rollout status daemonset/vector --timeout=180s
 
-kubectl --context=minikube apply -f ../slo/grafana-dashboard.yaml
-kubectl --context=minikube apply -f grafana-provisioning.yaml -f grafana.yaml
-kubectl --context=minikube -n logging rollout restart deployment/grafana
-kubectl --context=minikube -n logging rollout status deployment/grafana --timeout=360s
+../grafana/deploy.sh
 kubectl --context=minikube -n logging get deployments,daemonsets,pods,services,pvc

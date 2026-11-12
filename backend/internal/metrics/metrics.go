@@ -4,6 +4,7 @@ package metrics
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -21,11 +22,24 @@ type Metrics struct {
 	commentAttempts    *prometheus.CounterVec
 	logins             *prometheus.CounterVec
 	resolution         *prometheus.HistogramVec
+	httpRequests       *prometheus.CounterVec
+	httpDuration       *prometheus.HistogramVec
+	httpInFlight       prometheus.Gauge
 }
 
 func New() *Metrics {
 	m := &Metrics{
 		Registry: prometheus.NewRegistry(),
+		httpRequests: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "support_http_requests_total", Help: "Completed API and lab debug HTTP requests by route template and response status.",
+		}, []string{"method", "route", "status"}),
+		httpDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
+			Name: "support_http_request_duration_seconds", Help: "API and lab debug HTTP handler duration, including failed requests.",
+			Buckets: prometheus.DefBuckets,
+		}, []string{"method", "route"}),
+		httpInFlight: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "support_http_requests_in_flight", Help: "API and lab debug HTTP requests currently being handled.",
+		}),
 		tickets: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "support_tickets_opened_total", Help: "Successfully persisted new tickets by initial priority.",
 		}, []string{"priority"}),
@@ -53,7 +67,8 @@ func New() *Metrics {
 		}, []string{"priority"}),
 	}
 	m.Registry.MustRegister(collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
-		m.tickets, m.ticketOpenAttempts, m.actions, m.actionAttempts, m.comments, m.commentAttempts, m.logins, m.resolution)
+		m.tickets, m.ticketOpenAttempts, m.actions, m.actionAttempts, m.comments, m.commentAttempts, m.logins, m.resolution,
+		m.httpRequests, m.httpDuration, m.httpInFlight)
 	for _, priority := range []string{"low", "medium", "high", "urgent"} {
 		m.tickets.WithLabelValues(priority)
 		m.ticketOpenAttempts.WithLabelValues(priority)
@@ -69,6 +84,26 @@ func New() *Metrics {
 		m.logins.WithLabelValues(role)
 	}
 	return m
+}
+
+// StartHTTPRequest returns a completion callback, called after the response and
+// panic recovery. Callers supply a route template, never the request URL.
+func (m *Metrics) StartHTTPRequest(method, route string) func(int) {
+	if m == nil {
+		return func(int) {}
+	}
+	switch method {
+	case "GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "CONNECT", "TRACE":
+	default:
+		method = "OTHER"
+	}
+	start := time.Now()
+	m.httpInFlight.Inc()
+	return func(status int) {
+		m.httpInFlight.Dec()
+		m.httpRequests.WithLabelValues(method, route, strconv.Itoa(status)).Inc()
+		m.httpDuration.WithLabelValues(method, route).Observe(time.Since(start).Seconds())
+	}
 }
 
 func (m *Metrics) Handler() http.Handler {
